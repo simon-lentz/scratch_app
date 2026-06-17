@@ -110,6 +110,15 @@ coverage/
 # Symbols
 app.*.symbols
 
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Claude Code working artifacts (plans, runbooks, settings) — local-only, never committed.
+.claude/
+
 # Exceptions to above rules.
 !**/ios/**/default.mode1v3
 !**/ios/**/default.mode2v3
