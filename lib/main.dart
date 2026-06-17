@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/widget_previews.dart';
 
 void main() {
   runApp(const ScratchApp());
 }
+
+/// Widget preview of [ScratchApp] for Flutter's widget previewer
+/// (`flutter widget-preview start`).
+///
+/// Returns [ScratchApp] directly so the preview supplies its own [MaterialApp]
+/// and theme; the previewer renders the returned widget as-is and does not wrap
+/// it in an app of its own.
+@Preview(name: 'ScratchApp')
+Widget previewScratchApp() => const ScratchApp();
 
 /// The root widget of the application.
 class ScratchApp extends StatelessWidget {
