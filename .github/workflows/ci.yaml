@@ -37,6 +37,9 @@ jobs:
         uses: VeryGoodOpenSource/very_good_coverage@v3
         with:
           path: coverage/lcov.info
+          # Exclude committed-but-generated drift code: it's only partially
+          # exercised by focused DAO tests, so measuring it would sink coverage.
+          exclude: "**/*.g.dart"
           min_coverage: 92
       - name: Build web
         run: flutter build web

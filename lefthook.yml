@@ -1,15 +1,18 @@
 # Git hooks managed by lefthook.
 #
-# Activate once per clone:
-#   flutter pub global activate lefthook_dart   # provides the `lefthook` command
-#   lefthook install                            # writes hooks into .git/hooks
-# (A system install such as `brew install lefthook` works too.)
+# Activate once per clone with NATIVE lefthook. Do NOT use the lefthook_dart pub
+# wrapper: v1.0.8 has no arm64 branch and crashes on Apple Silicon.
+#   brew install lefthook   # macOS; see lefthook docs for other platforms
+#   lefthook install        # writes hooks into .git/hooks
 pre-commit:
   parallel: true
   commands:
     format:
       glob: "*.dart"
-      run: dart format {staged_files} && git add {staged_files}
+      run: dart format {staged_files}
+      # Re-stage only what the formatter changed; handles partial staging
+      # correctly, unlike a blanket `git add {staged_files}`.
+      stage_fixed: true
 
 pre-push:
   parallel: true

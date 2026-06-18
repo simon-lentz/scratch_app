@@ -1,6 +1,6 @@
-# Scratch App
+# CheckPlan
 
-A new Flutter project.
+A local-first checklist planner — a Flutter app for learning Dart and Flutter deeply.
 
 ## Getting Started
 
