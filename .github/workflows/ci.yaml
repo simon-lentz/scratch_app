@@ -26,6 +26,14 @@ jobs:
           flutter-version: 3.44.2
           cache: true
       - run: flutter pub get
+      - name: Verify committed generated code is current
+        run: |
+          dart run build_runner build --delete-conflicting-outputs
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::Generated code is stale — run build_runner and commit the result."
+            git status --porcelain
+            exit 1
+          fi
       - name: Format
         run: dart format --output=none --set-exit-if-changed .
       - name: Analyze
@@ -37,14 +45,16 @@ jobs:
         uses: VeryGoodOpenSource/very_good_coverage@v3
         with:
           path: coverage/lcov.info
-          # Exclude committed-but-generated drift code: it's only partially
-          # exercised by focused DAO tests, so measuring it would sink coverage.
-          exclude: "**/*.g.dart"
+          # Exclude drift code that can't be meaningfully covered: the committed
+          # *.g.dart, and the declarative table classes — drift generates a
+          # $XTable that @override-shadows their column getters, so the getters
+          # never run at runtime and always report 0%.
+          exclude: "**/*.g.dart **/database/tables/*.dart"
           min_coverage: 92
       - name: Build web
         run: flutter build web
 
-  # Mobile is the target platform (D2), so build the Android app too — the native
+  # Mobile is the target platform, so build the Android app too — the native
   # (sqlite3_flutter_libs) build path differs from web. iOS needs a macOS runner,
   # so it's deferred until iOS is a real release target. Keep this job out of the
   # required checks until its first run is green.
