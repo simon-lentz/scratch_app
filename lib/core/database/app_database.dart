@@ -1,4 +1,5 @@
 import 'package:checkplan/core/database/daos/checklist_dao.dart';
+import 'package:checkplan/core/database/daos/task_dao.dart';
 import 'package:checkplan/core/database/tables/checklists.dart';
 import 'package:checkplan/core/database/tables/subtasks.dart';
 import 'package:checkplan/core/database/tables/tasks.dart';
@@ -8,7 +9,10 @@ part 'app_database.g.dart';
 
 /// The single SQLite database for the app: owns the checklist, task, and
 /// subtask tables and enables foreign-key cascades on every connection.
-@DriftDatabase(tables: [Checklists, Tasks, Subtasks], daos: [ChecklistDao])
+@DriftDatabase(
+  tables: [Checklists, Tasks, Subtasks],
+  daos: [ChecklistDao, TaskDao],
+)
 class AppDatabase extends _$AppDatabase {
   /// Opens the database over the given executor (a native file in the app, an
   /// in-memory executor in tests).

@@ -1535,6 +1535,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'CREATE INDEX subtask_task_order ON subtasks (task_id, position)',
   );
   late final ChecklistDao checklistDao = ChecklistDao(this as AppDatabase);
+  late final TaskDao taskDao = TaskDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
