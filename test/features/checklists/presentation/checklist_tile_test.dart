@@ -69,7 +69,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(avatarColor(), const Color(0xFF2196F3));
 
-    // Default clears the colour back to null (distinct from a dismissed dialog).
+    // Default clears back to null (distinct from a dismissed dialog).
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Recolour'));
