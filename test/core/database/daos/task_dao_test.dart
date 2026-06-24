@@ -1,4 +1,5 @@
 import 'package:checkplan/core/database/app_database.dart';
+import 'package:checkplan/core/database/dao_support.dart';
 import 'package:checkplan/core/database/daos/checklist_dao.dart';
 import 'package:checkplan/core/database/daos/task_dao.dart';
 import 'package:checkplan/core/database/summaries.dart';
@@ -135,6 +136,9 @@ void main() {
     await tasks.add(list, 'b');
     await tasks.add(list, 'c');
     // Omitting b and c would leave them colliding on stale positions.
-    await expectLater(tasks.reorder(list, [a]), throwsStateError);
+    await expectLater(
+      tasks.reorder(list, [a]),
+      throwsA(isA<ReorderConflict>()),
+    );
   });
 }

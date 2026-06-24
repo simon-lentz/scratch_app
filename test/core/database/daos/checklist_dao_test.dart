@@ -1,4 +1,5 @@
 import 'package:checkplan/core/database/app_database.dart';
+import 'package:checkplan/core/database/dao_support.dart';
 import 'package:checkplan/core/database/daos/checklist_dao.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:drift/drift.dart' show Value;
@@ -137,7 +138,7 @@ void main() {
     await dao.create('B');
     await dao.create('C');
     // Omitting B and C would leave them colliding on stale positions.
-    await expectLater(dao.reorder([a]), throwsStateError);
+    await expectLater(dao.reorder([a]), throwsA(isA<ReorderConflict>()));
   });
 
   test(
