@@ -1,4 +1,5 @@
 import 'package:checkplan/core/database/app_database.dart';
+import 'package:checkplan/core/database/dao_support.dart';
 import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/result.dart';
 import 'package:checkplan/core/validation.dart';
@@ -93,6 +94,17 @@ void main() {
     final b = ((await controller().create('B')) as Ok<int>).value;
     await controller().reorder([b, a]);
     expect(await titles(), ['B', 'A']);
+  });
+
+  test('reorder with a stale id set returns Err(ReorderConflict)', () async {
+    final a = ((await controller().create('A')) as Ok<int>).value;
+    await controller().create('B'); // exists but omitted from the reorder set
+    // A divergent set, as a concurrent change would produce, is a recoverable
+    // conflict: the controller maps the DAO's ReorderConflict to an Err rather
+    // than letting the error throw across the layer boundary.
+    final result = await controller().reorder([a]);
+    expect(result, isA<Err<void>>());
+    expect((result as Err<void>).error, isA<ReorderConflict>());
   });
 
   test('delete removes the checklist', () async {
