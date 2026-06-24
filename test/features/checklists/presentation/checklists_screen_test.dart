@@ -1,0 +1,82 @@
+import 'dart:async';
+
+import 'package:checkplan/core/database/summaries.dart';
+import 'package:checkplan/features/checklists/application/checklist_providers.dart';
+import 'package:checkplan/features/checklists/presentation/checklists_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import '../../../support/memory_db.dart';
+import '../../../support/pump_checklists_screen.dart';
+
+void main() {
+  testWidgets('shows the empty state when there are no checklists', (
+    tester,
+  ) async {
+    await pumpChecklistsScreen(tester);
+    expect(find.text('No checklists yet'), findsOneWidget);
+  });
+
+  testWidgets('shows checklists with their progress', (tester) async {
+    final db = memoryDb();
+    await db.checklistDao.create('Groceries');
+    await pumpChecklistsScreen(tester, db: db);
+
+    expect(find.text('Groceries'), findsOneWidget);
+    expect(find.text('No tasks'), findsOneWidget); // total == 0, not "0/0"
+  });
+
+  testWidgets('shows the error state when the stream fails', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          activeChecklistsProvider.overrideWith(
+            (ref) => Stream.error(Exception('boom')),
+          ),
+        ],
+        child: const MaterialApp(home: ChecklistsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Something went wrong'), findsOneWidget);
+  });
+
+  testWidgets('shows the FAB in the empty state', (tester) async {
+    await pumpChecklistsScreen(tester);
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+  });
+
+  testWidgets('hides the FAB while loading', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          activeChecklistsProvider.overrideWith(
+            // A stream that never emits keeps the provider in AsyncLoading.
+            (ref) => Stream<List<ChecklistSummary>>.fromFuture(
+              Completer<List<ChecklistSummary>>().future,
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: ChecklistsScreen()),
+      ),
+    );
+    await tester.pump(); // one frame; do not settle (the spinner animates)
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsNothing);
+  });
+
+  testWidgets('hides the FAB in the error state', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          activeChecklistsProvider.overrideWith(
+            (ref) => Stream.error(Exception('boom')),
+          ),
+        ],
+        child: const MaterialApp(home: ChecklistsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(FloatingActionButton), findsNothing);
+  });
+}

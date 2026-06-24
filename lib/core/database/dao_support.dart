@@ -2,6 +2,22 @@ import 'package:checkplan/core/database/app_database.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:drift/drift.dart';
 
+/// Thrown by [PositioningDao.reorderByPosition] when the requested id set does
+/// not match the scope's current ids — a partial, duplicated, or stale set.
+///
+/// An [Exception], not an [Error]: the realistic cause is a benign race, where
+/// a caller dispatches the complete rendered order but a concurrent write
+/// changed the scope first. `Result.guard` maps it to an `Err` so the command
+/// degrades gracefully; a genuine logic bug in a reorder still surfaces as an
+/// uncaught [Error].
+class ReorderConflict implements Exception {
+  /// Creates a reorder conflict carrying a human-readable [message].
+  const ReorderConflict(this.message);
+
+  /// The human-readable reason the requested order was rejected.
+  final String message;
+}
+
 /// Shared helpers for DAOs whose rows are ordered by a dense integer `position`
 /// within a scope (checklists among the active set; tasks within a checklist;
 /// subtasks within a task).
@@ -28,10 +44,10 @@ mixin PositioningDao on DatabaseAccessor<AppDatabase> {
   /// [orderedIds] must be the complete, duplicate-free id set for the scope: an
   /// omitted id would keep its stale `position` and collide with a freshly
   /// assigned one. The contract is enforced before the rewrite (it reads the
-  /// scope's current ids and throws a [StateError] on a partial or duplicated
-  /// list), so a malformed reorder fails loudly instead of silently scrambling
-  /// order. The check runs in every build, and throwing before the [batch]
-  /// keeps the rewrite atomic: nothing is written on a violation.
+  /// scope's current ids and throws a [ReorderConflict] on a partial,
+  /// duplicated, or stale list), so a malformed reorder is rejected instead of
+  /// silently scrambling order. Throwing before the [batch] keeps the rewrite
+  /// atomic: nothing is written on a violation.
   ///
   /// [idColumn] is the table's primary-key column; [rowFor] builds the per-row
   /// companion (`position`/`updatedAt`); [scope] narrows the update and the
@@ -53,7 +69,7 @@ mixin PositioningDao on DatabaseAccessor<AppDatabase> {
     if (requestedIds.length != orderedIds.length ||
         requestedIds.length != currentIds.length ||
         !requestedIds.containsAll(currentIds)) {
-      throw StateError(
+      throw ReorderConflict(
         'reorder expects the complete, duplicate-free id set for the scope; '
         'got $orderedIds for current ids $currentIds',
       );
