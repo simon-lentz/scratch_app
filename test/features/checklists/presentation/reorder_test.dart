@@ -1,23 +1,15 @@
-import 'package:checkplan/core/database/database_providers.dart';
-import 'package:checkplan/features/checklists/presentation/checklists_screen.dart';
 import 'package:checkplan/features/checklists/presentation/widgets/checklist_tile.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../../../support/memory_db.dart';
+import '../../../support/pump_checklists_screen.dart';
 
 void main() {
   testWidgets('reordering rows persists the new order', (tester) async {
     final db = memoryDb();
     final idA = await db.checklistDao.create('A');
     final idB = await db.checklistDao.create('B');
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [appDatabaseProvider.overrideWithValue(db)],
-        child: const MaterialApp(home: ChecklistsScreen()),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await pumpChecklistsScreen(tester, db: db);
 
     // Invoke the reorder callback directly instead of simulating a drag: the
     // default ReorderableListView begins a drag from a long-press on mobile,

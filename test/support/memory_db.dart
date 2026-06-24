@@ -1,6 +1,8 @@
 import 'package:checkplan/core/database/app_database.dart';
+import 'package:checkplan/core/database/database_providers.dart';
 import 'package:drift/drift.dart' show DatabaseConnection;
 import 'package:drift/native.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Opens a fresh in-memory [AppDatabase] for a widget test and registers its
@@ -27,3 +29,14 @@ AppDatabase memoryDb() {
   addTearDown(db.close);
   return db;
 }
+
+/// An [appDatabaseProvider] override backed by a fresh in-memory database that
+/// the provider container owns and closes via `ref.onDispose`.
+///
+/// The `ProviderContainer.test` counterpart to [memoryDb] (which is
+/// widget-scoped via `addTearDown`); `overrideWithValue` would leak the DB.
+Override memoryDbOverride() => appDatabaseProvider.overrideWith((ref) {
+  final db = AppDatabase(NativeDatabase.memory());
+  ref.onDispose(db.close);
+  return db;
+});

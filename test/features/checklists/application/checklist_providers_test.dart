@@ -1,23 +1,15 @@
-import 'package:checkplan/core/database/app_database.dart';
 import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
-import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../../support/memory_db.dart';
 
 void main() {
   // A container whose database is a fresh in-memory drift DB it owns and
   // closes (overrideWithValue would leak the DB).
-  ProviderContainer makeContainer() => ProviderContainer.test(
-    overrides: [
-      appDatabaseProvider.overrideWith((ref) {
-        final db = AppDatabase(NativeDatabase.memory());
-        ref.onDispose(db.close);
-        return db;
-      }),
-    ],
-  );
+  ProviderContainer makeContainer() =>
+      ProviderContainer.test(overrides: [memoryDbOverride()]);
 
   test('appDatabaseProvider throws until it is overridden', () {
     // No override: the un-overridden provider must refuse to build, so a

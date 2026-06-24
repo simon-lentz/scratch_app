@@ -1,21 +1,13 @@
-import 'package:checkplan/core/database/database_providers.dart';
-import 'package:checkplan/features/checklists/presentation/checklists_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../../../support/memory_db.dart';
+import '../../../support/pump_checklists_screen.dart';
 
 void main() {
   testWidgets('renames a checklist via the overflow menu', (tester) async {
     final db = memoryDb();
     await db.checklistDao.create('Old name');
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [appDatabaseProvider.overrideWithValue(db)],
-        child: const MaterialApp(home: ChecklistsScreen()),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await pumpChecklistsScreen(tester, db: db);
 
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
@@ -35,13 +27,7 @@ void main() {
   ) async {
     final db = memoryDb();
     await db.checklistDao.create('Palette');
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [appDatabaseProvider.overrideWithValue(db)],
-        child: const MaterialApp(home: ChecklistsScreen()),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await pumpChecklistsScreen(tester, db: db);
 
     // setColor is dispatched fire-and-forget by the swatch tap, so assert the
     // reactive result on the rendered tile, not the DB: pumpAndSettle settles
@@ -80,13 +66,7 @@ void main() {
     final first = await db.taskDao.add(id, 'a');
     await db.taskDao.add(id, 'b');
     await db.taskDao.setDone(first, isDone: true);
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [appDatabaseProvider.overrideWithValue(db)],
-        child: const MaterialApp(home: ChecklistsScreen()),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await pumpChecklistsScreen(tester, db: db);
 
     expect(find.text('1/2'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);

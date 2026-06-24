@@ -1,19 +1,10 @@
-import 'package:checkplan/core/database/database_providers.dart';
-import 'package:checkplan/features/checklists/presentation/checklists_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import '../../../support/memory_db.dart';
+import '../../../support/pump_checklists_screen.dart';
 
 void main() {
   testWidgets('FAB opens the dialog and creates a checklist', (tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [appDatabaseProvider.overrideWithValue(memoryDb())],
-        child: const MaterialApp(home: ChecklistsScreen()),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await pumpChecklistsScreen(tester);
 
     await tester.tap(find.byIcon(Icons.add));
     await tester.pumpAndSettle();
@@ -26,13 +17,7 @@ void main() {
   });
 
   testWidgets('Add is disabled until the title is non-empty', (tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [appDatabaseProvider.overrideWithValue(memoryDb())],
-        child: const MaterialApp(home: ChecklistsScreen()),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await pumpChecklistsScreen(tester);
     await tester.tap(find.byIcon(Icons.add));
     await tester.pumpAndSettle();
 

@@ -1,26 +1,13 @@
-import 'package:checkplan/core/database/app_database.dart';
-import 'package:checkplan/core/database/database_providers.dart';
-import 'package:checkplan/features/checklists/presentation/checklists_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../../../support/memory_db.dart';
-
-Future<void> pumpScreen(WidgetTester tester, AppDatabase db) async {
-  await tester.pumpWidget(
-    ProviderScope(
-      overrides: [appDatabaseProvider.overrideWithValue(db)],
-      child: const MaterialApp(home: ChecklistsScreen()),
-    ),
-  );
-  await tester.pumpAndSettle();
-}
+import '../../../support/pump_checklists_screen.dart';
 
 void main() {
   testWidgets('archive removes the row and Undo restores it', (tester) async {
     final db = memoryDb();
     await db.checklistDao.create('Temp');
-    await pumpScreen(tester, db);
+    await pumpChecklistsScreen(tester, db: db);
 
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
@@ -38,7 +25,7 @@ void main() {
   ) async {
     final db = memoryDb();
     await db.checklistDao.create('Doomed');
-    await pumpScreen(tester, db);
+    await pumpChecklistsScreen(tester, db: db);
 
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
