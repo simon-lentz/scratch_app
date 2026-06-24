@@ -13,3 +13,16 @@ String? titleError(String raw) {
   }
   return null;
 }
+
+/// Thrown across the write boundary when a title fails [titleError].
+///
+/// Carries the human-readable [message] from [titleError] so a controller can
+/// reject invalid input as an `Err` before the database is touched, instead of
+/// leaning on the DB length constraint as control flow.
+class ValidationException implements Exception {
+  /// Creates a validation failure carrying a human-readable [message].
+  const ValidationException(this.message);
+
+  /// The human-readable reason the input was rejected (from [titleError]).
+  final String message;
+}

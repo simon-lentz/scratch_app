@@ -1,6 +1,7 @@
 import 'package:checkplan/core/database/app_database.dart';
 import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/result.dart';
+import 'package:checkplan/core/validation.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,9 +45,25 @@ void main() {
     expect(await titles(), ['Groceries']);
   });
 
-  test('create with a blank title returns Err (length backstop)', () async {
+  test('create rejects a blank title at the controller boundary', () async {
     final result = await controller().create('   ');
     expect(result, isA<Err<int>>());
+    final error = (result as Err<int>).error;
+    expect(error, isA<ValidationException>());
+    expect((error as ValidationException).message, 'Title cannot be empty');
+  });
+
+  test('create rejects an over-length title at the controller', () async {
+    final result = await controller().create('a' * (maxTitleLength + 1));
+    expect(result, isA<Err<int>>());
+    expect((result as Err<int>).error, isA<ValidationException>());
+  });
+
+  test('rename rejects a blank title at the controller', () async {
+    final id = ((await controller().create('Valid')) as Ok<int>).value;
+    final result = await controller().rename(id, '   ');
+    expect(result, isA<Err<void>>());
+    expect((result as Err<void>).error, isA<ValidationException>());
   });
 
   test('rename updates the title', () async {

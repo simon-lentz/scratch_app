@@ -22,10 +22,13 @@ class ChecklistsScreen extends ConsumerWidget {
         AsyncError(:final error) => _ErrorView(error: error),
         _ => const Center(child: CircularProgressIndicator()),
       },
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _createChecklist(context, ref),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: switch (checklistsAsync) {
+        AsyncData() => FloatingActionButton(
+          onPressed: () => _createChecklist(context, ref),
+          child: const Icon(Icons.add),
+        ),
+        _ => null,
+      },
     );
   }
 }
@@ -36,11 +39,15 @@ Future<void> _createChecklist(BuildContext context, WidgetRef ref) async {
   final result = await ref
       .read(checklistControllerProvider.notifier)
       .create(title);
-  if (context.mounted && result is Err<int>) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Could not create the checklist')),
-    );
+  if (!context.mounted) return;
+  if (result case Err()) {
+    _showError(context, 'Could not create the checklist');
   }
+}
+
+/// Shows a transient error [message] over the current scaffold.
+void _showError(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
 /// The non-empty list of checklist summaries.
@@ -53,7 +60,8 @@ class _ChecklistList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return ReorderableListView.builder(
       itemCount: summaries.length,
-      onReorderItem: (oldIndex, newIndex) => _reorder(ref, oldIndex, newIndex),
+      onReorderItem: (oldIndex, newIndex) =>
+          _reorder(context, ref, oldIndex, newIndex),
       itemBuilder: (context, index) {
         final summary = summaries[index];
         return ChecklistTile(
@@ -68,14 +76,25 @@ class _ChecklistList extends ConsumerWidget {
     );
   }
 
-  Future<void> _reorder(WidgetRef ref, int oldIndex, int newIndex) {
+  Future<void> _reorder(
+    BuildContext context,
+    WidgetRef ref,
+    int oldIndex,
+    int newIndex,
+  ) async {
     // onReorderItem already adjusts newIndex for the item removed at oldIndex,
     // so insert at newIndex directly (the deprecated onReorder required a
     // manual `newIndex > oldIndex ? newIndex - 1` shift).
     final ids = summaries.map((s) => s.checklist.id).toList();
     final moved = ids.removeAt(oldIndex);
     ids.insert(newIndex, moved);
-    return ref.read(checklistControllerProvider.notifier).reorder(ids);
+    final result = await ref
+        .read(checklistControllerProvider.notifier)
+        .reorder(ids);
+    if (!context.mounted) return;
+    if (result case Err()) {
+      _showError(context, 'Could not reorder the checklists');
+    }
   }
 
   Future<void> _rename(
@@ -88,17 +107,25 @@ class _ChecklistList extends ConsumerWidget {
       initialTitle: summary.checklist.title,
     );
     if (title == null) return;
-    await ref
+    final result = await ref
         .read(checklistControllerProvider.notifier)
         .rename(summary.checklist.id, title);
+    if (!context.mounted) return;
+    if (result case Err()) {
+      _showError(context, 'Could not rename the checklist');
+    }
   }
 
   Future<void> _recolour(BuildContext context, WidgetRef ref, int id) async {
     final choice = await showRecolourDialog(context);
     if (choice == null || !context.mounted) return; // dismissed (no-op)
-    await ref
+    final result = await ref
         .read(checklistControllerProvider.notifier)
         .setColor(id, choice.color?.toARGB32());
+    if (!context.mounted) return;
+    if (result case Err()) {
+      _showError(context, 'Could not update the colour');
+    }
   }
 
   Future<void> _archive(
@@ -107,14 +134,26 @@ class _ChecklistList extends ConsumerWidget {
     ChecklistSummary summary,
   ) async {
     final controller = ref.read(checklistControllerProvider.notifier);
-    await controller.archive(summary.checklist.id);
+    final result = await controller.archive(summary.checklist.id);
     if (!context.mounted) return;
+    if (result case Err()) {
+      _showError(context, 'Could not archive the checklist');
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Archived "${summary.checklist.title}"'),
         action: SnackBarAction(
           label: 'Undo',
-          onPressed: () => controller.restore(summary.checklist.id),
+          onPressed: () async {
+            final restoreResult = await controller.restore(
+              summary.checklist.id,
+            );
+            if (!context.mounted) return;
+            if (restoreResult case Err()) {
+              _showError(context, 'Could not restore the checklist');
+            }
+          },
         ),
       ),
     );
@@ -145,9 +184,13 @@ class _ChecklistList extends ConsumerWidget {
       ),
     );
     if (confirmed != true || !context.mounted) return;
-    await ref
+    final result = await ref
         .read(checklistControllerProvider.notifier)
         .delete(summary.checklist.id);
+    if (!context.mounted) return;
+    if (result case Err()) {
+      _showError(context, 'Could not delete the checklist');
+    }
   }
 }
 

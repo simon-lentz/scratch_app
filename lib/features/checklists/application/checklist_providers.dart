@@ -2,6 +2,7 @@ import 'package:checkplan/core/database/daos/checklist_dao.dart';
 import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/result.dart';
+import 'package:checkplan/core/validation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Accessor for the [ChecklistDao], backed by the shared database.
@@ -18,9 +19,9 @@ final activeChecklistsProvider = StreamProvider<List<ChecklistSummary>>(
 
 /// Write commands for checklists.
 ///
-/// Holds no state of its own — the database is the state. Each
-/// command returns a [Result]: drift exceptions become [Err]; programming bugs
-/// (`Error`) propagate.
+/// Holds no state of its own — the database is the state. Each command returns
+/// a [Result]: rejected input and caught exceptions become [Err]; programming
+/// bugs (`Error`) propagate.
 class ChecklistController extends Notifier<void> {
   @override
   void build() {}
@@ -28,13 +29,30 @@ class ChecklistController extends Notifier<void> {
   ChecklistDao get _dao => ref.read(checklistDaoProvider);
 
   /// Creates a checklist from the (trimmed) [title]; the [Ok] value is its id.
-  Future<Result<int>> create(String title) =>
-      Result.guard(() => _dao.create(title.trim()));
+  ///
+  /// Rejects an empty or over-length [title] with an [Err] wrapping a
+  /// [ValidationException] before the database is touched ([titleError] is the
+  /// authoritative check; the DB length constraint is only a backstop).
+  Future<Result<int>> create(String title) {
+    final error = titleError(title);
+    if (error != null) {
+      return Future.value(Err(ValidationException(error)));
+    }
+    return Result.guard(() => _dao.create(title.trim()));
+  }
 
   /// Renames the checklist [id] to the trimmed [title].
-  Future<Result<void>> rename(int id, String title) => Result.guard(() async {
-    await _dao.rename(id, title.trim());
-  });
+  ///
+  /// Rejects an empty or over-length [title] like [create].
+  Future<Result<void>> rename(int id, String title) {
+    final error = titleError(title);
+    if (error != null) {
+      return Future.value(Err(ValidationException(error)));
+    }
+    return Result.guard(() async {
+      await _dao.rename(id, title.trim());
+    });
+  }
 
   /// Sets or clears the checklist [id]'s ARGB theme colour.
   Future<Result<void>> setColor(int id, int? colorValue) =>

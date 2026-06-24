@@ -1,9 +1,7 @@
 /// The outcome of a fallible write command: [Ok] on success, [Err] on a
 /// caught failure.
 ///
-/// Reads surface errors as `AsyncError`.
-///
-///  Writes cross the layer boundary as a
+/// Reads surface errors as `AsyncError`; writes cross the layer boundary as a
 /// `Result` value the caller pattern-matches, rather than as a thrown exception
 /// a caller might forget to catch.
 sealed class Result<T> {
@@ -35,7 +33,7 @@ final class Ok<T> extends Result<T> {
 
 /// A failed [Result] carrying the caught [error].
 ///
-/// Named `Err` to prevent shadowing.
+/// Named `Err` (not `Error`) to avoid shadowing `dart:core`'s `Error`.
 final class Err<T> extends Result<T> {
   /// Wraps a caught [error].
   const Err(this.error);
