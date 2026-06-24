@@ -2,18 +2,10 @@ import 'package:checkplan/core/database/app_database.dart';
 import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:checkplan/features/checklists/presentation/checklists_screen.dart';
-import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-AppDatabase memoryDb() => AppDatabase(
-  DatabaseConnection(
-    NativeDatabase.memory(),
-    closeStreamsSynchronously: true,
-  ),
-);
+import '../../../support/memory_db.dart';
 
 Widget wrap(AppDatabase db) => ProviderScope(
   overrides: [appDatabaseProvider.overrideWithValue(db)],

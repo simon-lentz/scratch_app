@@ -1,10 +1,8 @@
 import 'package:checkplan/app/app.dart';
-import 'package:checkplan/core/database/app_database.dart';
 import 'package:checkplan/core/database/database_providers.dart';
-import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'support/memory_db.dart';
 
 void main() {
   testWidgets('CheckPlanApp launches on the empty Lists screen', (
@@ -13,15 +11,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          appDatabaseProvider.overrideWithValue(
-            AppDatabase(
-              // closeStreamsSynchronously avoids post-test timer errors.
-              DatabaseConnection(
-                NativeDatabase.memory(),
-                closeStreamsSynchronously: true,
-              ),
-            ),
-          ),
+          appDatabaseProvider.overrideWithValue(memoryDb()),
         ],
         child: const CheckPlanApp(),
       ),

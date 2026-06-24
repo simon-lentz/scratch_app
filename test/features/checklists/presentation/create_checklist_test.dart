@@ -1,19 +1,9 @@
-import 'package:checkplan/core/database/app_database.dart';
 import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/features/checklists/presentation/checklists_screen.dart';
-// Import drift with `isNull` hidden to avoid static conflicts (flutter_test).
-import 'package:drift/drift.dart' hide isNull;
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-AppDatabase memoryDb() => AppDatabase(
-  DatabaseConnection(
-    NativeDatabase.memory(),
-    closeStreamsSynchronously: true,
-  ),
-);
+import '../../../support/memory_db.dart';
 
 void main() {
   testWidgets('FAB opens the dialog and creates a checklist', (tester) async {
