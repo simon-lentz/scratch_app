@@ -71,15 +71,15 @@ void main() {
     expect(find.text('Could not rename the checklist'), findsOneWidget);
   });
 
-  testWidgets('recolour failure shows an error', (tester) async {
+  testWidgets('recolor failure shows an error', (tester) async {
     await pumpWithController(tester, _FailingController.new);
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Recolour'));
+    await tester.tap(find.text('Recolor'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('#FF2196F3'));
     await tester.pumpAndSettle();
-    expect(find.text('Could not update the colour'), findsOneWidget);
+    expect(find.text('Could not update the color'), findsOneWidget);
   });
 
   testWidgets('archive failure shows an error and not a false success', (

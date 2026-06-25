@@ -1,5 +1,6 @@
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/result.dart';
+import 'package:checkplan/core/widgets/error_snackbar.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:checkplan/features/checklists/presentation/widgets/checklist_name_dialog.dart';
 import 'package:checkplan/features/checklists/presentation/widgets/checklist_tile.dart';
@@ -42,13 +43,8 @@ Future<void> _createChecklist(BuildContext context, WidgetRef ref) async {
       .create(title);
   if (!context.mounted) return;
   if (result case Err()) {
-    _showError(context, 'Could not create the checklist');
+    showErrorSnackBar(context, 'Could not create the checklist');
   }
-}
-
-/// Shows a transient error [message] over the current scaffold.
-void _showError(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
 /// The non-empty list of checklist summaries.
@@ -69,7 +65,7 @@ class _ChecklistList extends ConsumerWidget {
           key: ValueKey(summary.checklist.id),
           summary: summary,
           onRename: () => _rename(context, ref, summary),
-          onRecolour: () => _recolour(context, ref, summary.checklist.id),
+          onRecolor: () => _recolor(context, ref, summary.checklist.id),
           onArchive: () => _archive(context, ref, summary),
           onDelete: () => _delete(context, ref, summary),
           onOpen: () => context.push('/checklist/${summary.checklist.id}'),
@@ -95,7 +91,7 @@ class _ChecklistList extends ConsumerWidget {
         .reorder(ids);
     if (!context.mounted) return;
     if (result case Err()) {
-      _showError(context, 'Could not reorder the checklists');
+      showErrorSnackBar(context, 'Could not reorder the checklists');
     }
   }
 
@@ -114,19 +110,19 @@ class _ChecklistList extends ConsumerWidget {
         .rename(summary.checklist.id, title);
     if (!context.mounted) return;
     if (result case Err()) {
-      _showError(context, 'Could not rename the checklist');
+      showErrorSnackBar(context, 'Could not rename the checklist');
     }
   }
 
-  Future<void> _recolour(BuildContext context, WidgetRef ref, int id) async {
-    final choice = await showRecolourDialog(context);
+  Future<void> _recolor(BuildContext context, WidgetRef ref, int id) async {
+    final choice = await showRecolorDialog(context);
     if (choice == null || !context.mounted) return; // dismissed (no-op)
     final result = await ref
         .read(checklistControllerProvider.notifier)
         .setColor(id, choice.color?.toARGB32());
     if (!context.mounted) return;
     if (result case Err()) {
-      _showError(context, 'Could not update the colour');
+      showErrorSnackBar(context, 'Could not update the color');
     }
   }
 
@@ -139,7 +135,7 @@ class _ChecklistList extends ConsumerWidget {
     final result = await controller.archive(summary.checklist.id);
     if (!context.mounted) return;
     if (result case Err()) {
-      _showError(context, 'Could not archive the checklist');
+      showErrorSnackBar(context, 'Could not archive the checklist');
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
@@ -153,7 +149,7 @@ class _ChecklistList extends ConsumerWidget {
             );
             if (!context.mounted) return;
             if (restoreResult case Err()) {
-              _showError(context, 'Could not restore the checklist');
+              showErrorSnackBar(context, 'Could not restore the checklist');
             }
           },
         ),
@@ -191,7 +187,7 @@ class _ChecklistList extends ConsumerWidget {
         .delete(summary.checklist.id);
     if (!context.mounted) return;
     if (result case Err()) {
-      _showError(context, 'Could not delete the checklist');
+      showErrorSnackBar(context, 'Could not delete the checklist');
     }
   }
 }

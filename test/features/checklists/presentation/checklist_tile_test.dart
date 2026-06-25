@@ -22,7 +22,7 @@ void main() {
     expect(find.text('Old name'), findsNothing);
   });
 
-  testWidgets('recolours via the menu, then Default clears the colour', (
+  testWidgets('recolors via the menu, then Default clears the color', (
     tester,
   ) async {
     final db = memoryDb();
@@ -31,15 +31,15 @@ void main() {
 
     // setColor is dispatched fire-and-forget by the swatch tap, so assert the
     // reactive result on the rendered tile, not the DB: pumpAndSettle settles
-    // the UI, so the tile's avatar colour is the deterministic signal (the
-    // persisted value itself is covered by the controller test). Recolour rows
+    // the UI, so the tile's avatar color is the deterministic signal (the
+    // persisted value itself is covered by the controller test). Recolor rows
     // are labelled by hex; Colors.blue is 0xFF2196F3.
     Color? avatarColor() =>
         tester.widget<CircleAvatar>(find.byType(CircleAvatar)).backgroundColor;
 
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Recolour'));
+    await tester.tap(find.text('Recolor'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('#FF2196F3'));
     await tester.pumpAndSettle();
@@ -48,7 +48,7 @@ void main() {
     // Default clears back to null (distinct from a dismissed dialog).
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Recolour'));
+    await tester.tap(find.text('Recolor'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Default'));
     await tester.pumpAndSettle();

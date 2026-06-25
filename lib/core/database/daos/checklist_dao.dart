@@ -75,7 +75,7 @@ class ChecklistDao extends DatabaseAccessor<AppDatabase>
         ),
       );
 
-  /// Sets or clears the checklist's theme colour — an ARGB int, or null to
+  /// Sets or clears the checklist's theme color — an ARGB int, or null to
   /// restore the default.
   Future<int> setColor(int id, int? colorValue) =>
       (update(checklists)..where((c) => c.id.equals(id))).write(

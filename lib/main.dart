@@ -30,7 +30,7 @@ void main() {
 /// `NativeDatabase` pulls in `dart:ffi`, which is unavailable on the
 /// `flutter build web` target. [_PreviewStore] is pure Dart, so the preview
 /// stays off that path while still exercising the real one-way loop — the FAB,
-/// rename, recolour, archive, delete, and reorder all mutate the store, its
+/// rename, recolor, archive, delete, and reorder all mutate the store, its
 /// stream re-emits, and the screen rebuilds.
 @Preview(name: 'CheckPlanApp')
 Widget previewCheckPlanApp() {

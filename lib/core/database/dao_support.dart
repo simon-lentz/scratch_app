@@ -92,7 +92,7 @@ mixin PositioningDao on DatabaseAccessor<AppDatabase> {
 /// Adds child `(done, total)` count columns to [query] and returns a reader
 /// that maps a result row to its [Progress].
 ///
-/// `(0, 0)` ⇒ the parent has no children. Centralises the
+/// `(0, 0)` -> the parent has no children. Centralises the
 /// progress rollup shared by the checklist- and task-summary queries: pass the
 /// child table's id and `isDone` columns, then call the returned reader on each
 /// joined result row.

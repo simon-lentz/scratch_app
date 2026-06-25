@@ -55,7 +55,7 @@ class ChecklistController extends Notifier<void> {
     });
   }
 
-  /// Sets or clears the checklist [id]'s ARGB theme colour.
+  /// Sets or clears the checklist [id]'s ARGB theme color.
   Future<Result<void>> setColor(int id, int? colorValue) =>
       Result.guard(() async {
         await _dao.setColor(id, colorValue);
