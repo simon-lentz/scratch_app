@@ -8,6 +8,8 @@ import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/result.dart';
 import 'package:checkplan/core/validation.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
+import 'package:checkplan/features/tasks/application/subtask_providers.dart';
+import 'package:checkplan/features/tasks/application/task_providers.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
@@ -35,13 +37,28 @@ void main() {
 @Preview(name: 'CheckPlanApp')
 Widget previewCheckPlanApp() {
   final store = _PreviewStore();
+  final detailStore = _PreviewDetailStore();
   return ProviderScope(
     overrides: [
       activeChecklistsProvider.overrideWith((ref) {
-        ref.onDispose(store.dispose);
+        ref
+          ..onDispose(store.dispose)
+          ..onDispose(detailStore.dispose);
         return store.watch();
       }),
       checklistControllerProvider.overrideWith(() => _PreviewController(store)),
+      tasksForChecklistProvider.overrideWith(
+        (ref, checklistId) => detailStore.watchTasks(checklistId),
+      ),
+      taskControllerProvider.overrideWith(
+        () => _PreviewTaskController(detailStore),
+      ),
+      subtasksForTaskProvider.overrideWith(
+        (ref, taskId) => detailStore.watchSubtasks(taskId),
+      ),
+      subtaskControllerProvider.overrideWith(
+        () => _PreviewSubtaskController(detailStore),
+      ),
     ],
     child: const CheckPlanApp(),
   );
@@ -201,6 +218,234 @@ class _PreviewController extends ChecklistController {
   @override
   Future<Result<void>> delete(int id) async {
     _store.delete(id);
+    return const Ok(null);
+  }
+}
+
+/// In-memory task + subtask store backing the detail route in
+/// [previewCheckPlanApp], mirroring [_PreviewStore].
+///
+/// Plays the database's role for the detail screen: every mutation re-emits the
+/// affected streams (a checklist's tasks; a task's subtasks), so the one-way
+/// loop rebuilds the UI. Seeds checklist id 1 so the opened detail is
+/// populated.
+class _PreviewDetailStore {
+  _PreviewDetailStore() {
+    final apples = _newTask(1, 'Apples', isDone: true);
+    _tasks.addAll([
+      apples,
+      _newTask(1, 'Oranges', isDone: true),
+      _newTask(1, 'Bread'),
+      _newTask(1, 'Milk'),
+      _newTask(1, 'Butter'),
+    ]);
+    _subtasks.add(_newSubtask(apples.id, 'Granny Smith'));
+  }
+
+  final _tick = StreamController<void>.broadcast();
+  final List<Task> _tasks = [];
+  final List<Subtask> _subtasks = [];
+  var _nextTaskId = 1;
+  var _nextSubtaskId = 1;
+
+  /// A checklist's tasks (with subtask progress), re-emitted on every change.
+  Stream<List<TaskView>> watchTasks(int checklistId) async* {
+    yield _taskViews(checklistId);
+    yield* _tick.stream.map((_) => _taskViews(checklistId));
+  }
+
+  /// A task's subtasks, re-emitted on every change.
+  Stream<List<Subtask>> watchSubtasks(int taskId) async* {
+    yield _subtasksFor(taskId);
+    yield* _tick.stream.map((_) => _subtasksFor(taskId));
+  }
+
+  List<TaskView> _taskViews(int checklistId) => [
+    for (final task in _tasks)
+      if (task.checklistId == checklistId)
+        TaskView(task: task, subtaskProgress: _progressFor(task.id)),
+  ]..sort((a, b) => a.task.position.compareTo(b.task.position));
+
+  List<Subtask> _subtasksFor(int taskId) => [
+    for (final s in _subtasks)
+      if (s.taskId == taskId) s,
+  ]..sort((a, b) => a.position.compareTo(b.position));
+
+  Progress _progressFor(int taskId) {
+    final subs = _subtasks.where((s) => s.taskId == taskId);
+    return (subs.where((s) => s.isDone).length, subs.length);
+  }
+
+  void _emit() => _tick.add(null);
+
+  Task _newTask(int checklistId, String title, {bool isDone = false}) {
+    final now = DateTime.timestamp();
+    final id = _nextTaskId++;
+    return Task(
+      id: id,
+      checklistId: checklistId,
+      title: title,
+      isDone: isDone,
+      position: id,
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+
+  Subtask _newSubtask(int taskId, String title, {bool isDone = false}) {
+    final now = DateTime.timestamp();
+    final id = _nextSubtaskId++;
+    return Subtask(
+      id: id,
+      taskId: taskId,
+      title: title,
+      isDone: isDone,
+      position: id,
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+
+  void _replaceTask(int id, Task Function(Task row) update) {
+    final index = _tasks.indexWhere((t) => t.id == id);
+    if (index < 0) return;
+    _tasks[index] = update(_tasks[index]);
+  }
+
+  int addTask(int checklistId, String title) {
+    final row = _newTask(checklistId, title);
+    _tasks.add(row);
+    _emit();
+    return row.id;
+  }
+
+  void editTask(int id, {required String title, String? notes}) {
+    _replaceTask(
+      id,
+      (row) => row.copyWith(
+        title: title,
+        notes: Value(notes),
+        updatedAt: DateTime.timestamp(),
+      ),
+    );
+    _emit();
+  }
+
+  void setTaskDone(int id, {required bool isDone}) {
+    _replaceTask(
+      id,
+      (row) => row.copyWith(isDone: isDone, updatedAt: DateTime.timestamp()),
+    );
+    _emit();
+  }
+
+  void deleteTask(int id) {
+    _tasks.removeWhere((t) => t.id == id);
+    _subtasks.removeWhere((s) => s.taskId == id); // FK cascade
+    _emit();
+  }
+
+  void reorderTasks(List<int> orderedIds) {
+    for (final (index, id) in orderedIds.indexed) {
+      _replaceTask(id, (row) => row.copyWith(position: index));
+    }
+    _emit();
+  }
+
+  int addSubtask(int taskId, String title) {
+    final row = _newSubtask(taskId, title);
+    _subtasks.add(row);
+    _emit();
+    return row.id;
+  }
+
+  void setSubtaskDone(int id, {required bool isDone}) {
+    final index = _subtasks.indexWhere((s) => s.id == id);
+    if (index < 0) return;
+    _subtasks[index] = _subtasks[index].copyWith(
+      isDone: isDone,
+      updatedAt: DateTime.timestamp(),
+    );
+    _emit();
+  }
+
+  void deleteSubtask(int id) {
+    _subtasks.removeWhere((s) => s.id == id);
+    _emit();
+  }
+
+  /// Closes the broadcast stream when the preview's `ProviderScope` disposes.
+  void dispose() => _tick.close();
+}
+
+/// A [TaskController] whose commands drive a [_PreviewDetailStore] rather than
+/// a database, so the preview's task writes never reach the throw-only
+/// `appDatabaseProvider`.
+class _PreviewTaskController extends TaskController {
+  _PreviewTaskController(this._store);
+
+  final _PreviewDetailStore _store;
+
+  @override
+  Future<Result<int>> add(int checklistId, String title) async {
+    final error = titleError(title);
+    if (error != null) return Err(ValidationException(error));
+    return Ok(_store.addTask(checklistId, title.trim()));
+  }
+
+  @override
+  Future<Result<void>> edit(
+    int id, {
+    required String title,
+    String? notes,
+  }) async {
+    final error = titleError(title);
+    if (error != null) return Err(ValidationException(error));
+    _store.editTask(id, title: title.trim(), notes: notes);
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> setDone(int id, {required bool isDone}) async {
+    _store.setTaskDone(id, isDone: isDone);
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> delete(int id) async {
+    _store.deleteTask(id);
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> reorder(int checklistId, List<int> orderedIds) async {
+    _store.reorderTasks(orderedIds);
+    return const Ok(null);
+  }
+}
+
+/// A [SubtaskController] whose commands drive a [_PreviewDetailStore].
+class _PreviewSubtaskController extends SubtaskController {
+  _PreviewSubtaskController(this._store);
+
+  final _PreviewDetailStore _store;
+
+  @override
+  Future<Result<int>> add(int taskId, String title) async {
+    final error = titleError(title);
+    if (error != null) return Err(ValidationException(error));
+    return Ok(_store.addSubtask(taskId, title.trim()));
+  }
+
+  @override
+  Future<Result<void>> setDone(int id, {required bool isDone}) async {
+    _store.setSubtaskDone(id, isDone: isDone);
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> delete(int id) async {
+    _store.deleteSubtask(id);
     return const Ok(null);
   }
 }
