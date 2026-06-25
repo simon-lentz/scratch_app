@@ -1,8 +1,12 @@
 import 'package:checkplan/core/database/summaries.dart';
+import 'package:checkplan/core/reordering.dart';
 import 'package:checkplan/core/result.dart';
 import 'package:checkplan/core/validation.dart';
+import 'package:checkplan/core/widgets/confirm_delete_dialog.dart';
+import 'package:checkplan/core/widgets/empty_view.dart';
 import 'package:checkplan/core/widgets/error_snackbar.dart';
 import 'package:checkplan/core/widgets/name_dialog.dart';
+import 'package:checkplan/core/widgets/stream_error_view.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:checkplan/features/tasks/application/subtask_providers.dart';
 import 'package:checkplan/features/tasks/application/task_providers.dart';
@@ -10,6 +14,7 @@ import 'package:checkplan/features/tasks/presentation/widgets/subtask_tile.dart'
 import 'package:checkplan/features/tasks/presentation/widgets/task_editor_sheet.dart';
 import 'package:checkplan/features/tasks/presentation/widgets/task_tile.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// A checklist's detail screen: a live, reactive list of its tasks.
@@ -29,12 +34,14 @@ class ChecklistDetailScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       body: switch (tasksAsync) {
-        AsyncData(:final value) when value.isEmpty => const _EmptyTasks(),
+        AsyncData(:final value) when value.isEmpty => const EmptyView(
+          message: 'No tasks yet',
+        ),
         AsyncData(:final value) => _TaskList(
           tasks: value,
           checklistId: checklistId,
         ),
-        AsyncError(:final error) => _ErrorView(error: error),
+        AsyncError(:final error) => StreamErrorView(error: error),
         _ => const Center(child: CircularProgressIndicator()),
       },
       floatingActionButton: switch (tasksAsync) {
@@ -58,7 +65,7 @@ Future<void> _addTask(
     title: 'New task',
     submitLabel: 'Add',
   );
-  if (title == null) return;
+  if (title == null || !context.mounted) return;
   final result = await ref
       .read(taskControllerProvider.notifier)
       .add(checklistId, title);
@@ -100,10 +107,11 @@ class _TaskList extends ConsumerWidget {
     int oldIndex,
     int newIndex,
   ) async {
-    // onReorderItem already adjusts newIndex for the item removed at oldIndex.
-    final ids = tasks.map((t) => t.task.id).toList();
-    final moved = ids.removeAt(oldIndex);
-    ids.insert(newIndex, moved);
+    final ids = reorderedIds(
+      tasks.map((t) => t.task.id).toList(),
+      oldIndex,
+      newIndex,
+    );
     final result = await ref
         .read(taskControllerProvider.notifier)
         .reorder(checklistId, ids);
@@ -111,29 +119,6 @@ class _TaskList extends ConsumerWidget {
     if (result case Err()) {
       showErrorSnackBar(context, 'Could not reorder the tasks');
     }
-  }
-
-  Future<bool> _confirmDelete(BuildContext context, String title) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Delete "$title"?'),
-        content: const Text(
-          'This also deletes its subtasks. It cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    return confirmed ?? false;
   }
 
   // Confirms, then deletes, then always returns false: on success the reactive
@@ -145,7 +130,11 @@ class _TaskList extends ConsumerWidget {
     int id,
     String title,
   ) async {
-    final confirmed = await _confirmDelete(context, title);
+    final confirmed = await showConfirmDeleteDialog(
+      context,
+      title: 'Delete "$title"?',
+      message: 'This also deletes its subtasks. This cannot be undone.',
+    );
     if (!confirmed || !context.mounted) return false;
     final result = await ref.read(taskControllerProvider.notifier).delete(id);
     if (!context.mounted) return false;
@@ -180,28 +169,6 @@ class _TaskList extends ConsumerWidget {
     if (result case Err()) {
       showErrorSnackBar(context, 'Could not save the task');
     }
-  }
-}
-
-/// Shown when the checklist has no tasks.
-class _EmptyTasks extends StatelessWidget {
-  const _EmptyTasks();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('No tasks yet'));
-  }
-}
-
-/// Shown when the tasks stream emits an error.
-class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.error});
-
-  final Object error;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text('Something went wrong:\n$error'));
   }
 }
 
@@ -293,6 +260,7 @@ class _TaskItemState extends ConsumerState<_TaskItem> {
           child: TextField(
             controller: _addController,
             decoration: const InputDecoration(hintText: 'Add subtask'),
+            inputFormatters: [LengthLimitingTextInputFormatter(maxTitleLength)],
             onSubmitted: (_) => _addSub(taskId),
           ),
         ),
@@ -302,16 +270,19 @@ class _TaskItemState extends ConsumerState<_TaskItem> {
 
   Future<void> _addSub(int taskId) async {
     final title = _addController.text;
-    if (titleError(title) != null) return; // ignore empty/over-long input
+    if (titleError(title) != null) return; // ignore empty input
+    // Clear before the await: a second rapid submit then reads an empty field
+    // and cannot re-add, and text typed during the write is not clobbered by a
+    // post-await clear.
+    _addController.clear();
     final result = await ref
         .read(subtaskControllerProvider.notifier)
         .add(taskId, title);
     if (!mounted) return;
     if (result case Err()) {
+      _addController.text = title; // restore so a failed add can be retried
       showErrorSnackBar(context, 'Could not add the subtask');
-      return;
     }
-    _addController.clear(); // clear only after a successful add
   }
 
   Future<void> _toggleSub(int id, {required bool isDone}) async {

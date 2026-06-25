@@ -1,6 +1,10 @@
 import 'package:checkplan/core/database/summaries.dart';
+import 'package:checkplan/core/reordering.dart';
 import 'package:checkplan/core/result.dart';
+import 'package:checkplan/core/widgets/confirm_delete_dialog.dart';
+import 'package:checkplan/core/widgets/empty_view.dart';
 import 'package:checkplan/core/widgets/error_snackbar.dart';
+import 'package:checkplan/core/widgets/stream_error_view.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:checkplan/features/checklists/presentation/widgets/checklist_name_dialog.dart';
 import 'package:checkplan/features/checklists/presentation/widgets/checklist_tile.dart';
@@ -19,9 +23,11 @@ class ChecklistsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Lists')),
       body: switch (checklistsAsync) {
-        AsyncData(:final value) when value.isEmpty => const _EmptyChecklists(),
+        AsyncData(:final value) when value.isEmpty => const EmptyView(
+          message: 'No checklists yet',
+        ),
         AsyncData(:final value) => _ChecklistList(summaries: value),
-        AsyncError(:final error) => _ErrorView(error: error),
+        AsyncError(:final error) => StreamErrorView(error: error),
         _ => const Center(child: CircularProgressIndicator()),
       },
       floatingActionButton: switch (checklistsAsync) {
@@ -37,7 +43,7 @@ class ChecklistsScreen extends ConsumerWidget {
 
 Future<void> _createChecklist(BuildContext context, WidgetRef ref) async {
   final title = await showChecklistNameDialog(context);
-  if (title == null) return;
+  if (title == null || !context.mounted) return;
   final result = await ref
       .read(checklistControllerProvider.notifier)
       .create(title);
@@ -80,12 +86,11 @@ class _ChecklistList extends ConsumerWidget {
     int oldIndex,
     int newIndex,
   ) async {
-    // onReorderItem already adjusts newIndex for the item removed at oldIndex,
-    // so insert at newIndex directly (the deprecated onReorder required a
-    // manual `newIndex > oldIndex ? newIndex - 1` shift).
-    final ids = summaries.map((s) => s.checklist.id).toList();
-    final moved = ids.removeAt(oldIndex);
-    ids.insert(newIndex, moved);
+    final ids = reorderedIds(
+      summaries.map((s) => s.checklist.id).toList(),
+      oldIndex,
+      newIndex,
+    );
     final result = await ref
         .read(checklistControllerProvider.notifier)
         .reorder(ids);
@@ -162,26 +167,12 @@ class _ChecklistList extends ConsumerWidget {
     WidgetRef ref,
     ChecklistSummary summary,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Delete "${summary.checklist.title}"?'),
-        content: const Text(
-          'This also deletes its tasks. This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmDeleteDialog(
+      context,
+      title: 'Delete "${summary.checklist.title}"?',
+      message: 'This also deletes its tasks. This cannot be undone.',
     );
-    if (confirmed != true || !context.mounted) return;
+    if (!confirmed || !context.mounted) return;
     final result = await ref
         .read(checklistControllerProvider.notifier)
         .delete(summary.checklist.id);
@@ -189,27 +180,5 @@ class _ChecklistList extends ConsumerWidget {
     if (result case Err()) {
       showErrorSnackBar(context, 'Could not delete the checklist');
     }
-  }
-}
-
-/// Shown when there are no active checklists.
-class _EmptyChecklists extends StatelessWidget {
-  const _EmptyChecklists();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('No checklists yet'));
-  }
-}
-
-/// Shown when the checklists stream emits an error.
-class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.error});
-
-  final Object error;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text('Something went wrong:\n$error'));
   }
 }
