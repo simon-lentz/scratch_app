@@ -6,6 +6,7 @@ import 'package:checkplan/core/database/connection.dart';
 import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/result.dart';
+import 'package:checkplan/core/time/epoch_day.dart';
 import 'package:checkplan/core/validation.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:checkplan/features/tasks/application/subtask_providers.dart';
@@ -319,12 +320,18 @@ class _PreviewDetailStore {
     return row.id;
   }
 
-  void editTask(int id, {required String title, String? notes}) {
+  void editTask(
+    int id, {
+    required String title,
+    required EpochDay? dueDay,
+    String? notes,
+  }) {
     _replaceTask(
       id,
       (row) => row.copyWith(
         title: title,
         notes: Value(notes),
+        dueDay: Value(dueDay?.value),
         updatedAt: DateTime.timestamp(),
       ),
     );
@@ -397,11 +404,12 @@ class _PreviewTaskController extends TaskController {
   Future<Result<void>> edit(
     int id, {
     required String title,
+    required EpochDay? dueDay,
     String? notes,
   }) async {
     final error = titleError(title);
     if (error != null) return Err(ValidationException(error));
-    _store.editTask(id, title: title.trim(), notes: notes);
+    _store.editTask(id, title: title.trim(), notes: notes, dueDay: dueDay);
     return const Ok(null);
   }
 

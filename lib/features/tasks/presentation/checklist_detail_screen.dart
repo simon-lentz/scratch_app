@@ -1,6 +1,8 @@
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/reordering.dart';
 import 'package:checkplan/core/result.dart';
+import 'package:checkplan/core/time/current_day.dart';
+import 'package:checkplan/core/time/epoch_day.dart';
 import 'package:checkplan/core/validation.dart';
 import 'package:checkplan/core/widgets/confirm_delete_dialog.dart';
 import 'package:checkplan/core/widgets/empty_view.dart';
@@ -82,6 +84,7 @@ class _TaskList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final today = ref.watch(currentDayProvider);
     return ReorderableListView.builder(
       itemCount: tasks.length,
       onReorderItem: (oldIndex, newIndex) =>
@@ -96,7 +99,7 @@ class _TaskList extends ConsumerWidget {
           view: view,
           onToggleDone: (isDone) =>
               _toggle(context, ref, view.task.id, isDone: isDone),
-          onEdit: () => _edit(context, ref, view),
+          onEdit: () => _edit(context, ref, view, today),
           confirmAndDelete: () =>
               _confirmAndDelete(context, ref, view.task.id, view.task.title),
         );
@@ -162,12 +165,26 @@ class _TaskList extends ConsumerWidget {
     }
   }
 
-  Future<void> _edit(BuildContext context, WidgetRef ref, TaskView view) async {
-    final draft = await showTaskEditorSheet(context, task: view.task);
+  Future<void> _edit(
+    BuildContext context,
+    WidgetRef ref,
+    TaskView view,
+    EpochDay today,
+  ) async {
+    final draft = await showTaskEditorSheet(
+      context,
+      task: view.task,
+      today: today,
+    );
     if (draft == null || !context.mounted) return;
     final result = await ref
         .read(taskControllerProvider.notifier)
-        .edit(view.task.id, title: draft.title, notes: draft.notes);
+        .edit(
+          view.task.id,
+          title: draft.title,
+          notes: draft.notes,
+          dueDay: draft.dueDay,
+        );
     if (!context.mounted) return;
     if (result case Err()) {
       showErrorSnackBar(context, 'Could not save the task');

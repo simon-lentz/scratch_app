@@ -1,6 +1,7 @@
 import 'package:checkplan/core/database/dao_support.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/result.dart';
+import 'package:checkplan/core/time/epoch_day.dart';
 import 'package:checkplan/core/validation.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:checkplan/features/tasks/application/task_providers.dart';
@@ -53,11 +54,11 @@ void main() {
   test('edit updates title and clears notes with null', () async {
     final list = await seedChecklist();
     final id = ((await controller().add(list, 'Old')) as Ok<int>).value;
-    await controller().edit(id, title: 'New', notes: 'note');
+    await controller().edit(id, title: 'New', notes: 'note', dueDay: null);
     var task = (await onlyTask(list)).task;
     expect(task.title, 'New');
     expect(task.notes, 'note');
-    await controller().edit(id, title: 'New');
+    await controller().edit(id, title: 'New', dueDay: null);
     task = (await onlyTask(list)).task;
     expect(task.notes, isNull);
   });
@@ -65,7 +66,7 @@ void main() {
   test('edit rejects a blank title at the controller boundary', () async {
     final list = await seedChecklist();
     final id = ((await controller().add(list, 'Old')) as Ok<int>).value;
-    final result = await controller().edit(id, title: '   ');
+    final result = await controller().edit(id, title: '   ', dueDay: null);
     expect(result, isA<Err<void>>());
     expect((result as Err<void>).error, isA<ValidationException>());
   });
@@ -99,5 +100,35 @@ void main() {
     final result = await controller().reorder(list, [a]);
     expect(result, isA<Err<void>>());
     expect((result as Err<void>).error, isA<ReorderConflict>());
+  });
+
+  test('edit updates title and clears notes with null', () async {
+    final list = await seedChecklist();
+    final id = ((await controller().add(list, 'Old')) as Ok<int>).value;
+    await controller().edit(id, title: 'New', notes: 'note', dueDay: null);
+    var task = (await onlyTask(list)).task;
+    expect(task.title, 'New');
+    expect(task.notes, 'note');
+    await controller().edit(id, title: 'New', dueDay: null);
+    task = (await onlyTask(list)).task;
+    expect(task.notes, isNull);
+  });
+
+  test('edit rejects a blank title at the controller boundary', () async {
+    final list = await seedChecklist();
+    final id = ((await controller().add(list, 'Old')) as Ok<int>).value;
+    final result = await controller().edit(id, title: '   ', dueDay: null);
+    expect(result, isA<Err<void>>());
+    expect((result as Err<void>).error, isA<ValidationException>());
+  });
+
+  test('edit sets and then clears the due date', () async {
+    final list = await seedChecklist();
+    final id = ((await controller().add(list, 'Task')) as Ok<int>).value;
+    final due = EpochDay.fromDateTime(DateTime(2026, 6, 18));
+    await controller().edit(id, title: 'Task', dueDay: due);
+    expect((await onlyTask(list)).task.dueDay, due.value);
+    await controller().edit(id, title: 'Task', dueDay: null);
+    expect((await onlyTask(list)).task.dueDay, isNull);
   });
 }

@@ -1,4 +1,5 @@
 import 'package:checkplan/core/result.dart';
+import 'package:checkplan/core/time/epoch_day.dart';
 import 'package:checkplan/features/tasks/application/subtask_providers.dart';
 import 'package:checkplan/features/tasks/application/task_providers.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +19,7 @@ class _FailingTaskController extends TaskController {
     int id, {
     required String title,
     String? notes,
+    EpochDay? dueDay,
   }) async => _boom();
   @override
   Future<Result<void>> setDone(int id, {required bool isDone}) async => _boom();
