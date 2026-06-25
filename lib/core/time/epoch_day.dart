@@ -28,7 +28,7 @@ extension type const EpochDay(int value) {
   /// This date as a local `DateTime` anchored at noon, for formatting/display.
   ///
   /// Noon, not midnight: in a timezone whose DST transition skips local
-  /// midnight (e.g. clocks springing 00:00 → 01:00), `DateTime(y, m, d)` is
+  /// midnight (e.g. clocks springing 00:00 -> 01:00), `DateTime(y, m, d)` is
   /// normalised forward off midnight, which can drift the time-of-day or the
   /// civil date. Local noon exists in every timezone on every day, so the
   /// calendar date is always preserved. Use [EpochDay] arithmetic for date

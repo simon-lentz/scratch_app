@@ -1,0 +1,41 @@
+import 'package:checkplan/core/database/app_database.dart';
+import 'package:flutter/material.dart';
+
+/// A single subtask row: a done checkbox, the title, and a delete button.
+///
+/// A leaf widget that takes its data and callbacks as parameters.
+class SubtaskTile extends StatelessWidget {
+  /// Creates a subtask row from [subtask] and its callbacks.
+  const SubtaskTile({
+    required this.subtask,
+    required this.onToggleDone,
+    required this.onDelete,
+    super.key,
+  });
+
+  /// The subtask row this tile shows.
+  final Subtask subtask;
+
+  /// Invoked with the new done-state when the checkbox is toggled.
+  final ValueChanged<bool> onToggleDone;
+
+  /// Invoked when the user taps delete.
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      dense: true,
+      contentPadding: const EdgeInsets.only(left: 32, right: 8),
+      leading: Checkbox(
+        value: subtask.isDone,
+        onChanged: (value) => onToggleDone(value ?? false),
+      ),
+      title: Text(subtask.title),
+      trailing: IconButton(
+        icon: const Icon(Icons.close),
+        onPressed: onDelete,
+      ),
+    );
+  }
+}

@@ -21,11 +21,15 @@ void main() {
           body: Column(
             children: [
               TaskTile(
+                expanded: false,
+                onToggleExpanded: () {},
                 onEdit: () {},
                 view: TaskView(task: task, subtaskProgress: (0, 0)),
                 onToggleDone: (_) {},
               ),
               TaskTile(
+                expanded: false,
+                onToggleExpanded: () {},
                 onEdit: () {},
                 view: TaskView(task: task, subtaskProgress: (1, 3)),
                 onToggleDone: (_) {},

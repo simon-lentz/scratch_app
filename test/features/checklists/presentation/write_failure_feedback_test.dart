@@ -7,7 +7,7 @@ import '../../../support/pump_checklists_screen.dart';
 
 /// A controller whose commands all fail by default, to drive the view's error
 /// feedback. Reads still come from a real in-memory DB, so a row renders to act
-/// on. Set [archiveSucceeds] for the archive→Undo path: archive returns [Ok]
+/// on. Set [archiveSucceeds] for the archive->Undo path: archive returns [Ok]
 /// (so the Undo snackbar shows) while restore still fails.
 class _FailingController extends ChecklistController {
   _FailingController({this.archiveSucceeds = false});
@@ -125,7 +125,7 @@ void main() {
     expect(find.text('Could not reorder the checklists'), findsOneWidget);
   });
 
-  testWidgets('Undo→restore failure shows an error', (tester) async {
+  testWidgets('Undo->restore failure shows an error', (tester) async {
     await pumpWithController(
       tester,
       () => _FailingController(archiveSucceeds: true),

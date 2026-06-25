@@ -12,6 +12,8 @@ class TaskTile extends StatelessWidget {
     required this.view,
     required this.onToggleDone,
     required this.onEdit,
+    required this.expanded,
+    required this.onToggleExpanded,
     super.key,
   });
 
@@ -24,17 +26,32 @@ class TaskTile extends StatelessWidget {
   /// Invoked when the user taps the row to edit the task.
   final VoidCallback onEdit;
 
+  /// Whether this task's subtasks are currently expanded.
+  final bool expanded;
+
+  /// Invoked when the user toggles the expand affordance.
+  final VoidCallback onToggleExpanded;
+
   @override
   Widget build(BuildContext context) {
     final (done, total) = view.subtaskProgress;
     return ListTile(
       onTap: onEdit,
-      leading: Checkbox(
-        value: view.task.isDone,
-        onChanged: (value) => onToggleDone(value ?? false),
+      leading: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: Icon(expanded ? Icons.expand_less : Icons.expand_more),
+            onPressed: onToggleExpanded,
+          ),
+          Checkbox(
+            value: view.task.isDone,
+            onChanged: (value) => onToggleDone(value ?? false),
+          ),
+        ],
       ),
       title: Text(view.task.title),
-      // (0, 0) -> no subtasks -> no hint (design §3.3).
+      // (0, 0) -> no subtasks -> no hint.
       trailing: total == 0 ? null : Text('$done/$total'),
     );
   }

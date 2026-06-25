@@ -28,7 +28,7 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    // Blank → Add disabled.
+    // Blank -> Add disabled.
     final addButton = tester.widget<FilledButton>(
       find.widgetWithText(FilledButton, 'Add'),
     );

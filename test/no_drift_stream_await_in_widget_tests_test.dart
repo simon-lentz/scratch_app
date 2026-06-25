@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// Forbidden shapes inside a `testWidgets` body: a drift `watch…()` query
 /// reduced to a single value, or any stream matcher. Both imply awaiting a
 /// stream's emission, which the widget-test fake-async clock never delivers
-/// without a `pump` — so the test hangs to the timeout (design §10.3).
+/// without a `pump` — so the test hangs to the timeout.
 final List<RegExp> _forbidden = <RegExp>[
   RegExp(r'watch\w*\s*\([^;{}]*?\)\s*\.\s*(first|firstWhere|single|last)\b'),
   RegExp(
@@ -48,7 +48,7 @@ void main() {
       isEmpty,
       reason:
           'Awaiting a drift `.watch()` stream inside a testWidgets body hangs '
-          'to the test timeout (design §10.3): widget tests run under a '
+          'to the test timeout: widget tests run under a '
           'fake-async clock that only delivers stream events after a pump. Use '
           'a one-shot `.get()` read (the SeedReads extension in test/support) '
           'and assert reactive UI via pumpAndSettle + find.\n  '

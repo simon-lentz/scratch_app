@@ -1,9 +1,12 @@
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/result.dart';
+import 'package:checkplan/core/validation.dart';
 import 'package:checkplan/core/widgets/error_snackbar.dart';
 import 'package:checkplan/core/widgets/name_dialog.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
+import 'package:checkplan/features/tasks/application/subtask_providers.dart';
 import 'package:checkplan/features/tasks/application/task_providers.dart';
+import 'package:checkplan/features/tasks/presentation/widgets/subtask_tile.dart';
 import 'package:checkplan/features/tasks/presentation/widgets/task_editor_sheet.dart';
 import 'package:checkplan/features/tasks/presentation/widgets/task_tile.dart';
 import 'package:flutter/material.dart';
@@ -78,33 +81,14 @@ class _TaskList extends ConsumerWidget {
           _reorder(context, ref, oldIndex, newIndex),
       itemBuilder: (context, index) {
         final view = tasks[index];
-        return Dismissible(
-          key: ValueKey('dismiss-${view.task.id}'),
-          direction: DismissDirection.endToStart,
-          background: const ColoredBox(
-            color: Colors.red,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: EdgeInsets.only(right: 16),
-                child: Icon(Icons.delete, color: Colors.white),
-              ),
-            ),
-          ),
-          // Delete inside confirmDismiss and return false so the Dismissible
-          // never enters its dismissed state. On success the reactive stream
-          // removes the row; on failure it stays, with a snackbar. Returning
-          // true while the async delete and its re-emit are in flight would
-          // assert that a dismissed Dismissible is still in the tree.
-          confirmDismiss: (_) =>
+        return _TaskItem(
+          key: ValueKey(view.task.id),
+          view: view,
+          onToggleDone: (isDone) =>
+              _toggle(context, ref, view.task.id, isDone: isDone),
+          onEdit: () => _edit(context, ref, view),
+          confirmAndDelete: () =>
               _confirmAndDelete(context, ref, view.task.id, view.task.title),
-          child: TaskTile(
-            onEdit: () => _edit(context, ref, view),
-            key: ValueKey(view.task.id),
-            view: view,
-            onToggleDone: (isDone) =>
-                _toggle(context, ref, view.task.id, isDone: isDone),
-          ),
         );
       },
     );
@@ -218,5 +202,135 @@ class _ErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(child: Text('Something went wrong:\n$error'));
+  }
+}
+
+/// One row of the task list: the dismissible task tile plus, when expanded, its
+/// subtasks and an inline add field. Expansion is local view state.
+class _TaskItem extends ConsumerStatefulWidget {
+  const _TaskItem({
+    required this.view,
+    required this.onToggleDone,
+    required this.onEdit,
+    required this.confirmAndDelete,
+    super.key,
+  });
+
+  final TaskView view;
+  final ValueChanged<bool> onToggleDone;
+  final VoidCallback onEdit;
+  final Future<bool> Function() confirmAndDelete;
+
+  @override
+  ConsumerState<_TaskItem> createState() => _TaskItemState();
+}
+
+class _TaskItemState extends ConsumerState<_TaskItem> {
+  bool _expanded = false;
+  final _addController = TextEditingController();
+
+  @override
+  void dispose() {
+    _addController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final task = widget.view.task;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Dismissible(
+          key: ValueKey('dismiss-${task.id}'),
+          direction: DismissDirection.endToStart,
+          background: const ColoredBox(
+            color: Colors.red,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: EdgeInsets.only(right: 16),
+                child: Icon(Icons.delete, color: Colors.white),
+              ),
+            ),
+          ),
+          // See `_confirmAndDelete` on `_TaskList`: it deletes then returns
+          // false, so the row leaves via the reactive stream, never via the
+          // Dismissible's dismissed state.
+          confirmDismiss: (_) => widget.confirmAndDelete(),
+          child: TaskTile(
+            key: ValueKey(task.id),
+            view: widget.view,
+            onToggleDone: widget.onToggleDone,
+            onEdit: widget.onEdit,
+            expanded: _expanded,
+            onToggleExpanded: () => setState(() => _expanded = !_expanded),
+          ),
+        ),
+        if (_expanded) _subtasks(task.id),
+      ],
+    );
+  }
+
+  Widget _subtasks(int taskId) {
+    final subtasksAsync = ref.watch(subtasksForTaskProvider(taskId));
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ...switch (subtasksAsync) {
+          AsyncData(:final value) => value.map(
+            (subtask) => SubtaskTile(
+              key: ValueKey(subtask.id),
+              subtask: subtask,
+              onToggleDone: (isDone) => _toggleSub(subtask.id, isDone: isDone),
+              onDelete: () => _deleteSub(subtask.id),
+            ),
+          ),
+          _ => const [],
+        },
+        Padding(
+          padding: const EdgeInsets.only(left: 32, right: 16),
+          child: TextField(
+            controller: _addController,
+            decoration: const InputDecoration(hintText: 'Add subtask'),
+            onSubmitted: (_) => _addSub(taskId),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _addSub(int taskId) async {
+    final title = _addController.text;
+    if (titleError(title) != null) return; // ignore empty/over-long input
+    final result = await ref
+        .read(subtaskControllerProvider.notifier)
+        .add(taskId, title);
+    if (!mounted) return;
+    if (result case Err()) {
+      showErrorSnackBar(context, 'Could not add the subtask');
+      return;
+    }
+    _addController.clear(); // clear only after a successful add
+  }
+
+  Future<void> _toggleSub(int id, {required bool isDone}) async {
+    final result = await ref
+        .read(subtaskControllerProvider.notifier)
+        .setDone(id, isDone: isDone);
+    if (!mounted) return;
+    if (result case Err()) {
+      showErrorSnackBar(context, 'Could not update the subtask');
+    }
+  }
+
+  Future<void> _deleteSub(int id) async {
+    final result = await ref
+        .read(subtaskControllerProvider.notifier)
+        .delete(id);
+    if (!mounted) return;
+    if (result case Err()) {
+      showErrorSnackBar(context, 'Could not delete the subtask');
+    }
   }
 }
