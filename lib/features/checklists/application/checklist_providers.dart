@@ -4,6 +4,7 @@ import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/result.dart';
 import 'package:checkplan/core/validation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 
 /// Accessor for the [ChecklistDao], backed by the shared database.
 final checklistDaoProvider = Provider<ChecklistDao>(
@@ -54,7 +55,7 @@ class ChecklistController extends Notifier<void> {
     });
   }
 
-  /// Sets or clears the checklist [id]'s ARGB theme colour.
+  /// Sets or clears the checklist [id]'s ARGB theme color.
   Future<Result<void>> setColor(int id, int? colorValue) =>
       Result.guard(() async {
         await _dao.setColor(id, colorValue);
@@ -85,3 +86,20 @@ class ChecklistController extends Notifier<void> {
 final checklistControllerProvider = NotifierProvider<ChecklistController, void>(
   ChecklistController.new,
 );
+
+/// The active-list summary for one checklist id, or null if it is not in the
+/// active list (still loading, or archived).
+///
+/// Derives from [activeChecklistsProvider] so the detail screen can title its
+/// app bar without a separate query. `autoDispose.family` for the same reasons
+/// as the other detail reads.
+final ProviderFamily<ChecklistSummary?, int> checklistByIdProvider = Provider
+    .autoDispose
+    .family<ChecklistSummary?, int>((ref, id) {
+      final summaries = ref.watch(activeChecklistsProvider).value;
+      if (summaries == null) return null;
+      for (final summary in summaries) {
+        if (summary.checklist.id == id) return summary;
+      }
+      return null;
+    });

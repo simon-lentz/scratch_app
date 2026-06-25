@@ -88,7 +88,7 @@ void main() {
     expect(titles, ['C', 'A', 'B']);
   });
 
-  test('setColor sets then clears the colour', () async {
+  test('setColor sets then clears the color', () async {
     final id = await dao.create('Palette');
 
     await dao.setColor(id, 0xFF2196F3);

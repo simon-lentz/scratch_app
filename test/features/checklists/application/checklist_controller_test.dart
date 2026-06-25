@@ -63,7 +63,7 @@ void main() {
     expect(await titles(), ['New']);
   });
 
-  test('setColor sets then clears the colour', () async {
+  test('setColor sets then clears the color', () async {
     final id = ((await controller().create('Palette')) as Ok<int>).value;
     await controller().setColor(id, 0xFF2196F3);
     expect(await singleColor(), 0xFF2196F3);

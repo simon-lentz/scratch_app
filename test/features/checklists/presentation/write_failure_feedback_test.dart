@@ -7,7 +7,7 @@ import '../../../support/pump_checklists_screen.dart';
 
 /// A controller whose commands all fail by default, to drive the view's error
 /// feedback. Reads still come from a real in-memory DB, so a row renders to act
-/// on. Set [archiveSucceeds] for the archive→Undo path: archive returns [Ok]
+/// on. Set [archiveSucceeds] for the archive->Undo path: archive returns [Ok]
 /// (so the Undo snackbar shows) while restore still fails.
 class _FailingController extends ChecklistController {
   _FailingController({this.archiveSucceeds = false});
@@ -71,15 +71,15 @@ void main() {
     expect(find.text('Could not rename the checklist'), findsOneWidget);
   });
 
-  testWidgets('recolour failure shows an error', (tester) async {
+  testWidgets('recolor failure shows an error', (tester) async {
     await pumpWithController(tester, _FailingController.new);
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Recolour'));
+    await tester.tap(find.text('Recolor'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('#FF2196F3'));
     await tester.pumpAndSettle();
-    expect(find.text('Could not update the colour'), findsOneWidget);
+    expect(find.text('Could not update the color'), findsOneWidget);
   });
 
   testWidgets('archive failure shows an error and not a false success', (
@@ -125,7 +125,7 @@ void main() {
     expect(find.text('Could not reorder the checklists'), findsOneWidget);
   });
 
-  testWidgets('Undo→restore failure shows an error', (tester) async {
+  testWidgets('Undo->restore failure shows an error', (tester) async {
     await pumpWithController(
       tester,
       () => _FailingController(archiveSucceeds: true),

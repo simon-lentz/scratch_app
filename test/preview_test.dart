@@ -28,4 +28,25 @@ void main() {
     expect(find.text('New list'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('preview opens a checklist detail with interactive tasks', (
+    tester,
+  ) async {
+    await tester.pumpWidget(previewCheckPlanApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Groceries'));
+    await tester.pumpAndSettle();
+
+    // The detail route renders its seeded tasks (not the throw-only DB error).
+    expect(find.text('Apples'), findsOneWidget);
+    expect(find.text('Bread'), findsOneWidget);
+    expect(find.textContaining('Something went wrong'), findsNothing);
+
+    // A write drives the in-memory store, never the throw-only
+    // appDatabaseProvider, so toggling a task raises nothing.
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
 }

@@ -35,8 +35,16 @@ AppDatabase memoryDb() {
 ///
 /// The `ProviderContainer.test` counterpart to [memoryDb] (which is
 /// widget-scoped via `addTearDown`); `overrideWithValue` would leak the DB.
+/// Like [memoryDb], it sets `closeStreamsSynchronously: true` so a disposed
+/// test's stream queries tear down synchronously and no late drift callback
+/// can fire during a concurrent test.
 Override memoryDbOverride() => appDatabaseProvider.overrideWith((ref) {
-  final db = AppDatabase(NativeDatabase.memory());
+  final db = AppDatabase(
+    DatabaseConnection(
+      NativeDatabase.memory(),
+      closeStreamsSynchronously: true,
+    ),
+  );
   ref.onDispose(db.close);
   return db;
 });
