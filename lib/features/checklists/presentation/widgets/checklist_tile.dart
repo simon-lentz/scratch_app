@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// menu of actions.
 ///
 /// A leaf widget that takes its data and callbacks as parameters and reads no
-/// providers, so it is easy to test and preview.
+/// providers, so it is easy to test in isolation.
 class ChecklistTile extends StatelessWidget {
   /// Creates a checklist row from [summary] and its action callbacks.
   const ChecklistTile({
