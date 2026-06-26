@@ -19,7 +19,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Lists'), findsOneWidget); // app-bar title
+    expect(
+      find.widgetWithText(AppBar, 'Lists'),
+      findsOneWidget,
+    ); // app-bar title
     expect(find.text('No checklists yet'), findsOneWidget); // empty state
   });
 

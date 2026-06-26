@@ -6,11 +6,13 @@ import 'package:checkplan/core/database/connection.dart';
 import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/result.dart';
+import 'package:checkplan/core/time/current_day.dart';
 import 'package:checkplan/core/time/epoch_day.dart';
 import 'package:checkplan/core/validation.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:checkplan/features/tasks/application/subtask_providers.dart';
 import 'package:checkplan/features/tasks/application/task_providers.dart';
+import 'package:checkplan/features/today/application/today_providers.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
@@ -41,6 +43,12 @@ Widget previewCheckPlanApp() {
   final detailStore = _PreviewDetailStore();
   return ProviderScope(
     overrides: [
+      currentDayProvider.overrideWithValue(
+        EpochDay.fromDateTime(DateTime(2026, 6, 25)),
+      ),
+      todayProvider.overrideWith(
+        (ref) => detailStore.watchToday(ref.watch(currentDayProvider)),
+      ),
       activeChecklistsProvider.overrideWith((ref) {
         ref
           ..onDispose(store.dispose)
@@ -233,11 +241,12 @@ class _PreviewController extends ChecklistController {
 class _PreviewDetailStore {
   _PreviewDetailStore() {
     final apples = _newTask(1, 'Apples', isDone: true);
+    final today = EpochDay.fromDateTime(DateTime(2026, 6, 25));
     _tasks.addAll([
       apples,
       _newTask(1, 'Oranges', isDone: true),
-      _newTask(1, 'Bread'),
-      _newTask(1, 'Milk'),
+      _newTask(1, 'Bread', dueDay: today.value), // due today
+      _newTask(1, 'Milk', dueDay: today.value - 1), // overdue
       _newTask(1, 'Butter'),
     ]);
     _subtasks.add(_newSubtask(apples.id, 'Granny Smith'));
@@ -261,6 +270,28 @@ class _PreviewDetailStore {
     yield* _tick.stream.map((_) => _subtasksFor(taskId));
   }
 
+  /// The due-task buckets for [today], re-emitted on every change.
+  Stream<TodayBuckets> watchToday(EpochDay today) async* {
+    yield _todayBuckets(today);
+    yield* _tick.stream.map((_) => _todayBuckets(today));
+  }
+
+  TodayBuckets _todayBuckets(EpochDay today) {
+    final overdue = <TodayTask>[];
+    final dueToday = <TodayTask>[];
+    for (final task in _tasks) {
+      final due = task.dueDay;
+      if (task.isDone || due == null || due > today.value) continue;
+      final entry = TodayTask(task: task, checklistTitle: 'Groceries');
+      if (due < today.value) {
+        overdue.add(entry);
+      } else {
+        dueToday.add(entry);
+      }
+    }
+    return TodayBuckets(overdue: overdue, dueToday: dueToday);
+  }
+
   List<TaskView> _taskViews(int checklistId) => [
     for (final task in _tasks)
       if (task.checklistId == checklistId)
@@ -279,7 +310,12 @@ class _PreviewDetailStore {
 
   void _emit() => _tick.add(null);
 
-  Task _newTask(int checklistId, String title, {bool isDone = false}) {
+  Task _newTask(
+    int checklistId,
+    String title, {
+    bool isDone = false,
+    int? dueDay,
+  }) {
     final now = DateTime.timestamp();
     final id = _nextTaskId++;
     return Task(
@@ -287,6 +323,7 @@ class _PreviewDetailStore {
       checklistId: checklistId,
       title: title,
       isDone: isDone,
+      dueDay: dueDay,
       position: id,
       createdAt: now,
       updatedAt: now,

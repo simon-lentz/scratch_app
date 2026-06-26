@@ -49,4 +49,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('preview Today tab shows seeded due tasks', (tester) async {
+    await tester.pumpWidget(previewCheckPlanApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.today));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(AppBar, 'Today'), findsOneWidget);
+    expect(find.text('Bread'), findsOneWidget); // seeded due-today task
+    expect(find.text('Milk'), findsOneWidget); // seeded overdue task
+  });
 }
