@@ -1,6 +1,8 @@
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/reordering.dart';
 import 'package:checkplan/core/result.dart';
+import 'package:checkplan/core/time/current_day.dart';
+import 'package:checkplan/core/time/epoch_day.dart';
 import 'package:checkplan/core/validation.dart';
 import 'package:checkplan/core/widgets/confirm_delete_dialog.dart';
 import 'package:checkplan/core/widgets/empty_view.dart';
@@ -10,6 +12,7 @@ import 'package:checkplan/core/widgets/stream_error_view.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:checkplan/features/tasks/application/subtask_providers.dart';
 import 'package:checkplan/features/tasks/application/task_providers.dart';
+import 'package:checkplan/features/tasks/presentation/task_actions.dart';
 import 'package:checkplan/features/tasks/presentation/widgets/subtask_tile.dart';
 import 'package:checkplan/features/tasks/presentation/widgets/task_editor_sheet.dart';
 import 'package:checkplan/features/tasks/presentation/widgets/task_tile.dart';
@@ -82,6 +85,7 @@ class _TaskList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final today = ref.watch(currentDayProvider);
     return ReorderableListView.builder(
       itemCount: tasks.length,
       onReorderItem: (oldIndex, newIndex) =>
@@ -94,8 +98,9 @@ class _TaskList extends ConsumerWidget {
         return _TaskItem(
           key: ValueKey(view.task.id),
           view: view,
+          today: today,
           onToggleDone: (isDone) =>
-              _toggle(context, ref, view.task.id, isDone: isDone),
+              toggleTaskDone(context, ref, view.task.id, isDone: isDone),
           onEdit: () => _edit(context, ref, view),
           confirmAndDelete: () =>
               _confirmAndDelete(context, ref, view.task.id, view.task.title),
@@ -147,27 +152,21 @@ class _TaskList extends ConsumerWidget {
     return false;
   }
 
-  Future<void> _toggle(
+  Future<void> _edit(
     BuildContext context,
     WidgetRef ref,
-    int id, {
-    required bool isDone,
-  }) async {
-    final result = await ref
-        .read(taskControllerProvider.notifier)
-        .setDone(id, isDone: isDone);
-    if (!context.mounted) return;
-    if (result case Err()) {
-      showErrorSnackBar(context, 'Could not update the task');
-    }
-  }
-
-  Future<void> _edit(BuildContext context, WidgetRef ref, TaskView view) async {
+    TaskView view,
+  ) async {
     final draft = await showTaskEditorSheet(context, task: view.task);
     if (draft == null || !context.mounted) return;
     final result = await ref
         .read(taskControllerProvider.notifier)
-        .edit(view.task.id, title: draft.title, notes: draft.notes);
+        .edit(
+          view.task.id,
+          title: draft.title,
+          notes: draft.notes,
+          dueDay: draft.dueDay,
+        );
     if (!context.mounted) return;
     if (result case Err()) {
       showErrorSnackBar(context, 'Could not save the task');
@@ -180,6 +179,7 @@ class _TaskList extends ConsumerWidget {
 class _TaskItem extends ConsumerStatefulWidget {
   const _TaskItem({
     required this.view,
+    required this.today,
     required this.onToggleDone,
     required this.onEdit,
     required this.confirmAndDelete,
@@ -187,6 +187,7 @@ class _TaskItem extends ConsumerStatefulWidget {
   });
 
   final TaskView view;
+  final EpochDay today;
   final ValueChanged<bool> onToggleDone;
   final VoidCallback onEdit;
   final Future<bool> Function() confirmAndDelete;
@@ -231,6 +232,7 @@ class _TaskItemState extends ConsumerState<_TaskItem> {
           child: TaskTile(
             key: ValueKey(task.id),
             view: widget.view,
+            today: widget.today,
             onToggleDone: widget.onToggleDone,
             onEdit: widget.onEdit,
             expanded: _expanded,

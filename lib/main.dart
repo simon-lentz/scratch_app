@@ -6,10 +6,13 @@ import 'package:checkplan/core/database/connection.dart';
 import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/result.dart';
+import 'package:checkplan/core/time/current_day.dart';
+import 'package:checkplan/core/time/epoch_day.dart';
 import 'package:checkplan/core/validation.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:checkplan/features/tasks/application/subtask_providers.dart';
 import 'package:checkplan/features/tasks/application/task_providers.dart';
+import 'package:checkplan/features/today/application/today_providers.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
@@ -25,6 +28,10 @@ void main() {
   );
 }
 
+/// The fixed "today" the interactive preview pins, shared by the seeded due
+/// dates and the `currentDayProvider` override so the two cannot drift apart.
+final EpochDay _previewToday = EpochDay.fromDateTime(DateTime(2026, 6, 25));
+
 /// Interactive widget preview of [CheckPlanApp], backed by an in-memory store
 /// instead of a database.
 ///
@@ -37,9 +44,13 @@ void main() {
 @Preview(name: 'CheckPlanApp')
 Widget previewCheckPlanApp() {
   final store = _PreviewStore();
-  final detailStore = _PreviewDetailStore();
+  final detailStore = _PreviewDetailStore(store);
   return ProviderScope(
     overrides: [
+      currentDayProvider.overrideWithValue(_previewToday),
+      todayProvider.overrideWith(
+        (ref) => detailStore.watchToday(ref.watch(currentDayProvider)),
+      ),
       activeChecklistsProvider.overrideWith((ref) {
         ref
           ..onDispose(store.dispose)
@@ -95,6 +106,16 @@ class _PreviewStore {
     for (final summary in _summaries)
       if (summary.checklist.archivedAt == null) summary,
   ];
+
+  /// The checklist row for [id] regardless of archived state, or null if it
+  /// was hard-deleted. Lets the detail store mirror `watchTodayBuckets`'s join
+  /// on the checklist title and its archived-checklist exclusion.
+  Checklist? checklistById(int id) {
+    for (final summary in _summaries) {
+      if (summary.checklist.id == id) return summary.checklist;
+    }
+    return null;
+  }
 
   void _emit() => _controller.add(_active());
 
@@ -230,18 +251,19 @@ class _PreviewController extends ChecklistController {
 /// loop rebuilds the UI. Seeds checklist id 1 so the opened detail is
 /// populated.
 class _PreviewDetailStore {
-  _PreviewDetailStore() {
+  _PreviewDetailStore(this._checklists) {
     final apples = _newTask(1, 'Apples', isDone: true);
     _tasks.addAll([
       apples,
       _newTask(1, 'Oranges', isDone: true),
-      _newTask(1, 'Bread'),
-      _newTask(1, 'Milk'),
+      _newTask(1, 'Bread', dueDay: _previewToday.value), // due today
+      _newTask(1, 'Milk', dueDay: _previewToday.value - 1), // overdue
       _newTask(1, 'Butter'),
     ]);
     _subtasks.add(_newSubtask(apples.id, 'Granny Smith'));
   }
 
+  final _PreviewStore _checklists;
   final _tick = StreamController<void>.broadcast();
   final List<Task> _tasks = [];
   final List<Subtask> _subtasks = [];
@@ -258,6 +280,32 @@ class _PreviewDetailStore {
   Stream<List<Subtask>> watchSubtasks(int taskId) async* {
     yield _subtasksFor(taskId);
     yield* _tick.stream.map((_) => _subtasksFor(taskId));
+  }
+
+  /// The due-task buckets for [today], re-emitted on every change.
+  Stream<TodayBuckets> watchToday(EpochDay today) async* {
+    yield _todayBuckets(today);
+    yield* _tick.stream.map((_) => _todayBuckets(today));
+  }
+
+  TodayBuckets _todayBuckets(EpochDay today) {
+    final overdue = <TodayTask>[];
+    final dueToday = <TodayTask>[];
+    for (final task in _tasks) {
+      final due = task.dueDay;
+      if (task.isDone || due == null || due > today.value) continue;
+      // Mirror watchTodayBuckets: derive the real parent-checklist title and
+      // skip any task whose checklist is archived or hard-deleted.
+      final checklist = _checklists.checklistById(task.checklistId);
+      if (checklist == null || checklist.archivedAt != null) continue;
+      final entry = TodayTask(task: task, checklistTitle: checklist.title);
+      if (due < today.value) {
+        overdue.add(entry);
+      } else {
+        dueToday.add(entry);
+      }
+    }
+    return TodayBuckets(overdue: overdue, dueToday: dueToday);
   }
 
   List<TaskView> _taskViews(int checklistId) => [
@@ -278,7 +326,12 @@ class _PreviewDetailStore {
 
   void _emit() => _tick.add(null);
 
-  Task _newTask(int checklistId, String title, {bool isDone = false}) {
+  Task _newTask(
+    int checklistId,
+    String title, {
+    bool isDone = false,
+    int? dueDay,
+  }) {
     final now = DateTime.timestamp();
     final id = _nextTaskId++;
     return Task(
@@ -286,6 +339,7 @@ class _PreviewDetailStore {
       checklistId: checklistId,
       title: title,
       isDone: isDone,
+      dueDay: dueDay,
       position: id,
       createdAt: now,
       updatedAt: now,
@@ -319,12 +373,18 @@ class _PreviewDetailStore {
     return row.id;
   }
 
-  void editTask(int id, {required String title, String? notes}) {
+  void editTask(
+    int id, {
+    required String title,
+    required EpochDay? dueDay,
+    String? notes,
+  }) {
     _replaceTask(
       id,
       (row) => row.copyWith(
         title: title,
         notes: Value(notes),
+        dueDay: Value(dueDay?.value),
         updatedAt: DateTime.timestamp(),
       ),
     );
@@ -397,11 +457,12 @@ class _PreviewTaskController extends TaskController {
   Future<Result<void>> edit(
     int id, {
     required String title,
+    required EpochDay? dueDay,
     String? notes,
   }) async {
     final error = titleError(title);
     if (error != null) return Err(ValidationException(error));
-    _store.editTask(id, title: title.trim(), notes: notes);
+    _store.editTask(id, title: title.trim(), notes: notes, dueDay: dueDay);
     return const Ok(null);
   }
 

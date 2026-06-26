@@ -2,6 +2,7 @@ import 'package:checkplan/core/database/daos/task_dao.dart';
 import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/result.dart';
+import 'package:checkplan/core/time/epoch_day.dart';
 import 'package:checkplan/core/validation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -42,13 +43,19 @@ class TaskController extends Notifier<void> {
     return Result.guard(() => _dao.add(checklistId, title.trim()));
   }
 
-  /// Sets task [id]'s title and notes from the editor draft (a full write).
-  /// Rejects an empty or over-length [title]; `notes: null` clears the notes.
-  Future<Result<void>> edit(int id, {required String title, String? notes}) {
+  /// Sets task [id]'s title, notes, and due date from the editor draft (a full
+  /// write). Rejects an empty or over-length [title]; a null [notes]/[dueDay]
+  /// clears that field.
+  Future<Result<void>> edit(
+    int id, {
+    required String title,
+    required EpochDay? dueDay,
+    String? notes,
+  }) {
     final error = titleError(title);
     if (error != null) return Future.value(Err(ValidationException(error)));
     return Result.guard(() async {
-      await _dao.edit(id, title: title.trim(), notes: notes);
+      await _dao.edit(id, title: title.trim(), notes: notes, dueDay: dueDay);
     });
   }
 

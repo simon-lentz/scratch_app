@@ -122,18 +122,24 @@ class TaskDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
-  /// Sets the task's title and notes from the editor draft — a full write of
-  /// the editable fields, not a patch.
+  /// Sets the task's title, notes, and due date from the editor draft — a full
+  /// write of the editable fields, not a patch.
   ///
-  /// Passing `notes: null` clears the notes.
-  Future<int> edit(int id, {required String title, String? notes}) =>
-      (update(tasks)..where((t) => t.id.equals(id))).write(
-        TasksCompanion(
-          title: Value(title),
-          notes: Value(notes),
-          updatedAt: Value(DateTime.timestamp()),
-        ),
-      );
+  /// Passing `notes: null` clears the notes;
+  /// `dueDay: null` clears the due date.
+  Future<int> edit(
+    int id, {
+    required String title,
+    required EpochDay? dueDay,
+    String? notes,
+  }) => (update(tasks)..where((t) => t.id.equals(id))).write(
+    TasksCompanion(
+      title: Value(title),
+      notes: Value(notes),
+      dueDay: Value(dueDay?.value),
+      updatedAt: Value(DateTime.timestamp()),
+    ),
+  );
 
   /// Sets the task's own completion flag.
   Future<int> setDone(int id, {required bool isDone}) =>

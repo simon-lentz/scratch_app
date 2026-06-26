@@ -83,13 +83,13 @@ void main() {
     final list = await checklists.create('List');
     final id = await tasks.add(list, 'original');
 
-    await tasks.edit(id, title: 'renamed', notes: 'some notes');
+    await tasks.edit(id, title: 'renamed', notes: 'some notes', dueDay: null);
     final edited = (await tasks.watchForChecklist(list).first).single;
     expect(edited.task.title, 'renamed');
     expect(edited.task.notes, 'some notes');
 
     // Omitting notes passes null: edit is a full write, so this clears them.
-    await tasks.edit(id, title: 'renamed again');
+    await tasks.edit(id, title: 'renamed again', dueDay: null);
     final cleared = (await tasks.watchForChecklist(list).first).single;
     expect(cleared.task.title, 'renamed again');
     expect(cleared.task.notes, isNull);

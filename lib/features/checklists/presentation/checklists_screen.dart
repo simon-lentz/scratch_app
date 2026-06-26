@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/reordering.dart';
 import 'package:checkplan/core/result.dart';
@@ -74,10 +75,17 @@ class _ChecklistList extends ConsumerWidget {
           onRecolor: () => _recolor(context, ref, summary.checklist.id),
           onArchive: () => _archive(context, ref, summary),
           onDelete: () => _delete(context, ref, summary),
-          onOpen: () => context.push('/checklist/${summary.checklist.id}'),
+          onOpen: () => _open(context, summary.checklist.id),
         );
       },
     );
+  }
+
+  void _open(BuildContext context, int id) {
+    // Once a detail route is already on top, a repeat tap (a fast double-tap)
+    // would stack a second screen; canPop() is true by then, so drop it.
+    if (Navigator.of(context).canPop()) return;
+    unawaited(context.push('/checklist/$id'));
   }
 
   Future<void> _reorder(
