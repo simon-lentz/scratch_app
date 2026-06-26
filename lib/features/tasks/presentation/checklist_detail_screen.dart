@@ -209,19 +209,20 @@ class _TaskItemState extends ConsumerState<_TaskItem> {
   @override
   Widget build(BuildContext context) {
     final task = widget.view.task;
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Dismissible(
           key: ValueKey('dismiss-${task.id}'),
           direction: DismissDirection.endToStart,
-          background: const ColoredBox(
-            color: Colors.red,
+          background: ColoredBox(
+            color: scheme.errorContainer,
             child: Align(
               alignment: Alignment.centerRight,
               child: Padding(
-                padding: EdgeInsets.only(right: 16),
-                child: Icon(Icons.delete, color: Colors.white),
+                padding: const EdgeInsets.only(right: 16),
+                child: Icon(Icons.delete, color: scheme.onErrorContainer),
               ),
             ),
           ),
