@@ -50,11 +50,17 @@ class TaskTile extends StatelessWidget {
         children: [
           IconButton(
             icon: Icon(expanded ? Icons.expand_less : Icons.expand_more),
+            tooltip: expanded ? 'Hide subtasks' : 'Show subtasks',
             onPressed: onToggleExpanded,
           ),
-          Checkbox(
-            value: view.task.isDone,
-            onChanged: (value) => onToggleDone(value ?? false),
+          MergeSemantics(
+            child: Semantics(
+              label: 'Toggle "${view.task.title}" done',
+              child: Checkbox(
+                value: view.task.isDone,
+                onChanged: (value) => onToggleDone(value ?? false),
+              ),
+            ),
           ),
         ],
       ),

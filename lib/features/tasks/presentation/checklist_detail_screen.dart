@@ -63,6 +63,7 @@ class ChecklistDetailScreen extends ConsumerWidget {
       floatingActionButton: switch (tasksAsync) {
         AsyncData() => FloatingActionButton(
           onPressed: () => _addTask(context, ref, checklistId),
+          tooltip: 'New task',
           child: const Icon(Icons.add),
         ),
         _ => null,

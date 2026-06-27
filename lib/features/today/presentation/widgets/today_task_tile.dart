@@ -32,9 +32,14 @@ class TodayTaskTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = this.status;
     return ListTile(
-      leading: Checkbox(
-        value: entry.task.isDone,
-        onChanged: (value) => onToggleDone(value ?? false),
+      leading: MergeSemantics(
+        child: Semantics(
+          label: 'Toggle "${entry.task.title}" done',
+          child: Checkbox(
+            value: entry.task.isDone,
+            onChanged: (value) => onToggleDone(value ?? false),
+          ),
+        ),
       ),
       title: Text(entry.task.title),
       subtitle: Text(entry.checklistTitle),

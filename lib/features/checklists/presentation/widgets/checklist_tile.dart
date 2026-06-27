@@ -48,18 +48,23 @@ class ChecklistTile extends StatelessWidget {
       title: Text(summary.checklist.title),
       subtitle: total == 0
           ? const Text('No tasks')
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('$done/$total'),
-                TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: done / total),
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOut,
-                  builder: (context, value, _) =>
-                      LinearProgressIndicator(value: value),
+          : Semantics(
+              label: '$done of $total tasks done',
+              child: ExcludeSemantics(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('$done/$total'),
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: done / total),
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                      builder: (context, value, _) =>
+                          LinearProgressIndicator(value: value),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
       trailing: PopupMenuButton<_ChecklistAction>(
         onSelected: (action) => switch (action) {

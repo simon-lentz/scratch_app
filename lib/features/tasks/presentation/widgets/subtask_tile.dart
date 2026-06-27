@@ -27,13 +27,19 @@ class SubtaskTile extends StatelessWidget {
     return ListTile(
       dense: true,
       contentPadding: const EdgeInsets.only(left: 32, right: 8),
-      leading: Checkbox(
-        value: subtask.isDone,
-        onChanged: (value) => onToggleDone(value ?? false),
+      leading: MergeSemantics(
+        child: Semantics(
+          label: 'Toggle "${subtask.title}" done',
+          child: Checkbox(
+            value: subtask.isDone,
+            onChanged: (value) => onToggleDone(value ?? false),
+          ),
+        ),
       ),
       title: Text(subtask.title),
       trailing: IconButton(
         icon: const Icon(Icons.close),
+        tooltip: 'Delete subtask',
         onPressed: onDelete,
       ),
     );

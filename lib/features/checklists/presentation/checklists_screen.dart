@@ -50,6 +50,7 @@ class ChecklistsScreen extends ConsumerWidget {
       floatingActionButton: switch (checklistsAsync) {
         AsyncData() => FloatingActionButton(
           onPressed: () => _createChecklist(context, ref),
+          tooltip: 'New checklist',
           child: const Icon(Icons.add),
         ),
         _ => null,
