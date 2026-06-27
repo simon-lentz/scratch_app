@@ -1,5 +1,6 @@
 import 'package:checkplan/core/database/app_database.dart';
 import 'package:checkplan/core/database/connection.dart';
+import 'package:checkplan/core/database/database_reset.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 
@@ -38,3 +39,27 @@ Override appDatabaseOverride([AppDatabase Function() open = openAppDatabase]) =>
       });
       return db;
     });
+
+/// The database-file deletion used by [resetDatabase], injected so tests can
+/// override it and touch no real files. Defaults to the platform
+/// [deleteAppDatabase] (an unsupported-throwing stub on web, where reset is
+/// never offered).
+final deleteAppDatabaseProvider = Provider<Future<void> Function()>(
+  (ref) => deleteAppDatabase,
+);
+
+/// Recovers from an unrecoverable open failure by erasing the database: closes
+/// the current connection, deletes the on-disk file via
+/// [deleteAppDatabaseProvider], then invalidates [appDatabaseProvider] so it
+/// re-opens an empty database and every screen re-renders.
+Future<void> resetDatabase(WidgetRef ref) async {
+  final database = ref.read(appDatabaseProvider);
+  try {
+    await database.close();
+  } on Exception catch (_) {
+    // A failed open re-raises from close(); the file was never locked, so the
+    // delete below still proceeds.
+  }
+  await ref.read(deleteAppDatabaseProvider)();
+  ref.invalidate(appDatabaseProvider);
+}

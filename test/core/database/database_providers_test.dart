@@ -31,4 +31,12 @@ void main() {
     expect(built, 2);
     expect(identical(first, second), isFalse);
   });
+
+  test('deleteAppDatabaseProvider defaults to deleteAppDatabase', () {
+    final container = ProviderContainer.test();
+    expect(
+      container.read(deleteAppDatabaseProvider),
+      isA<Future<void> Function()>(),
+    );
+  });
 }

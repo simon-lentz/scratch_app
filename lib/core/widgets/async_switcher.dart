@@ -1,5 +1,7 @@
 import 'package:checkplan/core/database/database_providers.dart';
+import 'package:checkplan/core/widgets/confirm_delete_dialog.dart';
 import 'package:checkplan/core/widgets/stream_error_view.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -44,6 +46,7 @@ class AsyncSwitcher<T> extends ConsumerWidget {
         key: const ValueKey('error'),
         error: error,
         onRetry: () => ref.invalidate(appDatabaseProvider),
+        onReset: kIsWeb ? null : () => _confirmAndReset(context, ref),
       ),
       AsyncValue(:final value?) when isEmpty(value) => KeyedSubtree(
         key: const ValueKey('empty'),
@@ -59,4 +62,19 @@ class AsyncSwitcher<T> extends ConsumerWidget {
       ),
     },
   );
+}
+
+/// Confirms the destructive database reset, then runs it. A no-op if the user
+/// dismisses the dialog (or the context unmounts across it).
+Future<void> _confirmAndReset(BuildContext context, WidgetRef ref) async {
+  final confirmed = await showConfirmDeleteDialog(
+    context,
+    title: 'Erase all data and start over?',
+    message:
+        'This permanently deletes every checklist and task. '
+        'This cannot be undone.',
+    confirmLabel: 'Erase',
+  );
+  if (!confirmed || !context.mounted) return;
+  await resetDatabase(ref);
 }
