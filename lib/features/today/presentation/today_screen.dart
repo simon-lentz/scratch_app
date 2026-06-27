@@ -1,3 +1,4 @@
+import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/model/due_status.dart';
 import 'package:checkplan/core/time/current_day.dart';
@@ -23,7 +24,10 @@ class TodayScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Today')),
       body: switch (todayAsync) {
-        AsyncError(:final error) => StreamErrorView(error: error),
+        AsyncError(:final error) => StreamErrorView(
+          error: error,
+          onRetry: () => ref.invalidate(appDatabaseProvider),
+        ),
         AsyncValue(:final value?)
             when value.overdue.isEmpty && value.dueToday.isEmpty =>
           const EmptyView(

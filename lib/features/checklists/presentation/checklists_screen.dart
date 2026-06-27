@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/reordering.dart';
 import 'package:checkplan/core/result.dart';
@@ -29,7 +30,10 @@ class ChecklistsScreen extends ConsumerWidget {
           icon: Icons.checklist,
         ),
         AsyncData(:final value) => _ChecklistList(summaries: value),
-        AsyncError(:final error) => StreamErrorView(error: error),
+        AsyncError(:final error) => StreamErrorView(
+          error: error,
+          onRetry: () => ref.invalidate(appDatabaseProvider),
+        ),
         _ => const Center(child: CircularProgressIndicator()),
       },
       floatingActionButton: switch (checklistsAsync) {
