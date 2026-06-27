@@ -1,4 +1,5 @@
 import 'package:checkplan/core/database/app_database.dart';
+import 'package:checkplan/core/widgets/labeled_checkbox.dart';
 import 'package:flutter/material.dart';
 
 /// A single subtask row: a done checkbox, the title, and a delete button.
@@ -27,14 +28,10 @@ class SubtaskTile extends StatelessWidget {
     return ListTile(
       dense: true,
       contentPadding: const EdgeInsets.only(left: 32, right: 8),
-      leading: MergeSemantics(
-        child: Semantics(
-          label: 'Toggle "${subtask.title}" done',
-          child: Checkbox(
-            value: subtask.isDone,
-            onChanged: (value) => onToggleDone(value ?? false),
-          ),
-        ),
+      leading: LabeledCheckbox(
+        label: 'Toggle "${subtask.title}" done',
+        value: subtask.isDone,
+        onChanged: onToggleDone,
       ),
       title: Text(subtask.title),
       trailing: IconButton(

@@ -1,15 +1,14 @@
-import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/reordering.dart';
 import 'package:checkplan/core/result.dart';
 import 'package:checkplan/core/time/current_day.dart';
 import 'package:checkplan/core/time/epoch_day.dart';
 import 'package:checkplan/core/validation.dart';
+import 'package:checkplan/core/widgets/async_switcher.dart';
 import 'package:checkplan/core/widgets/confirm_delete_dialog.dart';
 import 'package:checkplan/core/widgets/empty_view.dart';
 import 'package:checkplan/core/widgets/error_snackbar.dart';
 import 'package:checkplan/core/widgets/name_dialog.dart';
-import 'package:checkplan/core/widgets/stream_error_view.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:checkplan/features/tasks/application/subtask_providers.dart';
 import 'package:checkplan/features/tasks/application/task_providers.dart';
@@ -37,28 +36,14 @@ class ChecklistDetailScreen extends ConsumerWidget {
     final tasksAsync = ref.watch(tasksForChecklistProvider(checklistId));
     return Scaffold(
       appBar: AppBar(title: Text(title)),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
-        child: switch (tasksAsync) {
-          AsyncData(:final value) when value.isEmpty => const EmptyView(
-            key: ValueKey('empty'),
-            message: 'No tasks yet',
-            icon: Icons.task_alt,
-          ),
-          AsyncData(:final value) => KeyedSubtree(
-            key: const ValueKey('data'),
-            child: _TaskList(tasks: value, checklistId: checklistId),
-          ),
-          AsyncError(:final error) => StreamErrorView(
-            key: const ValueKey('error'),
-            error: error,
-            onRetry: () => ref.invalidate(appDatabaseProvider),
-          ),
-          _ => const Center(
-            key: ValueKey('loading'),
-            child: CircularProgressIndicator(),
-          ),
-        },
+      body: AsyncSwitcher(
+        value: tasksAsync,
+        isEmpty: (tasks) => tasks.isEmpty,
+        empty: const EmptyView(
+          message: 'No tasks yet',
+          icon: Icons.task_alt,
+        ),
+        data: (tasks) => _TaskList(tasks: tasks, checklistId: checklistId),
       ),
       floatingActionButton: switch (tasksAsync) {
         AsyncData() => FloatingActionButton(

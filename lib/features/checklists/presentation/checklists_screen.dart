@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/reordering.dart';
 import 'package:checkplan/core/result.dart';
+import 'package:checkplan/core/widgets/async_switcher.dart';
 import 'package:checkplan/core/widgets/confirm_delete_dialog.dart';
 import 'package:checkplan/core/widgets/empty_view.dart';
 import 'package:checkplan/core/widgets/error_snackbar.dart';
-import 'package:checkplan/core/widgets/stream_error_view.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:checkplan/features/checklists/presentation/widgets/checklist_name_dialog.dart';
 import 'package:checkplan/features/checklists/presentation/widgets/checklist_tile.dart';
@@ -24,28 +23,14 @@ class ChecklistsScreen extends ConsumerWidget {
     final checklistsAsync = ref.watch(activeChecklistsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Lists')),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
-        child: switch (checklistsAsync) {
-          AsyncData(:final value) when value.isEmpty => const EmptyView(
-            key: ValueKey('empty'),
-            message: 'No checklists yet',
-            icon: Icons.checklist,
-          ),
-          AsyncData(:final value) => KeyedSubtree(
-            key: const ValueKey('data'),
-            child: _ChecklistList(summaries: value),
-          ),
-          AsyncError(:final error) => StreamErrorView(
-            key: const ValueKey('error'),
-            error: error,
-            onRetry: () => ref.invalidate(appDatabaseProvider),
-          ),
-          _ => const Center(
-            key: ValueKey('loading'),
-            child: CircularProgressIndicator(),
-          ),
-        },
+      body: AsyncSwitcher(
+        value: checklistsAsync,
+        isEmpty: (summaries) => summaries.isEmpty,
+        empty: const EmptyView(
+          message: 'No checklists yet',
+          icon: Icons.checklist,
+        ),
+        data: (summaries) => _ChecklistList(summaries: summaries),
       ),
       floatingActionButton: switch (checklistsAsync) {
         AsyncData() => FloatingActionButton(

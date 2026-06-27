@@ -1,6 +1,7 @@
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/model/due_status.dart';
 import 'package:checkplan/core/widgets/due_date_chip.dart';
+import 'package:checkplan/core/widgets/labeled_checkbox.dart';
 import 'package:flutter/material.dart';
 
 /// A single Today row: a done checkbox, the task title, its parent checklist,
@@ -32,14 +33,10 @@ class TodayTaskTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = this.status;
     return ListTile(
-      leading: MergeSemantics(
-        child: Semantics(
-          label: 'Toggle "${entry.task.title}" done',
-          child: Checkbox(
-            value: entry.task.isDone,
-            onChanged: (value) => onToggleDone(value ?? false),
-          ),
-        ),
+      leading: LabeledCheckbox(
+        label: 'Toggle "${entry.task.title}" done',
+        value: entry.task.isDone,
+        onChanged: onToggleDone,
       ),
       title: Text(entry.task.title),
       subtitle: Text(entry.checklistTitle),

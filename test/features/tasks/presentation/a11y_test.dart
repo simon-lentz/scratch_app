@@ -2,6 +2,7 @@ import 'package:checkplan/features/tasks/presentation/checklist_detail_screen.da
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../../support/a11y.dart';
 import '../../../support/memory_db.dart';
 import '../../../support/pump_checklist_detail_screen.dart';
 import '../../../support/test_overrides.dart';
@@ -10,7 +11,6 @@ void main() {
   testWidgets('Detail meets tap-target and labelled-tappable guidelines', (
     tester,
   ) async {
-    final handle = tester.ensureSemantics();
     final db = memoryDb();
     final list = await db.checklistDao.create('Chores');
     final task = await db.taskDao.add(list, 'Sweep');
@@ -20,9 +20,7 @@ void main() {
     await tester.tap(find.byTooltip('Show subtasks')); // reveal the subtask row
     await tester.pumpAndSettle();
 
-    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
-    await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
-    handle.dispose();
+    await expectMeetsTapTargetGuidelines(tester);
   });
 
   testWidgets('detail tiles scale with a 2x text scale without overflow', (

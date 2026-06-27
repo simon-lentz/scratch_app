@@ -14,6 +14,7 @@ class DueDateChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final label = describe(status);
     final scheme = Theme.of(context).colorScheme;
     final overdue = status is Overdue;
     final fg = overdue ? scheme.onErrorContainer : scheme.onSurfaceVariant;
@@ -22,7 +23,7 @@ class DueDateChip extends StatelessWidget {
       context,
     ).textTheme.labelSmall?.copyWith(color: fg);
     return Semantics(
-      label: describe(status),
+      label: label,
       child: ExcludeSemantics(
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -37,7 +38,7 @@ class DueDateChip extends StatelessWidget {
                 Icon(Icons.error_outline, size: 14, color: fg),
                 const SizedBox(width: 4),
               ],
-              Text(describe(status), style: textStyle),
+              Text(label, style: textStyle),
             ],
           ),
         ),

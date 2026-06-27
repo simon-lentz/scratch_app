@@ -1,10 +1,9 @@
-import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/model/due_status.dart';
 import 'package:checkplan/core/time/current_day.dart';
 import 'package:checkplan/core/time/epoch_day.dart';
+import 'package:checkplan/core/widgets/async_switcher.dart';
 import 'package:checkplan/core/widgets/empty_view.dart';
-import 'package:checkplan/core/widgets/stream_error_view.dart';
 import 'package:checkplan/features/tasks/presentation/task_actions.dart';
 import 'package:checkplan/features/today/application/today_providers.dart';
 import 'package:checkplan/features/today/presentation/widgets/today_task_tile.dart';
@@ -23,30 +22,15 @@ class TodayScreen extends ConsumerWidget {
     final today = ref.watch(currentDayProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Today')),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
-        child: switch (todayAsync) {
-          AsyncError(:final error) => StreamErrorView(
-            key: const ValueKey('error'),
-            error: error,
-            onRetry: () => ref.invalidate(appDatabaseProvider),
-          ),
-          AsyncValue(:final value?)
-              when value.overdue.isEmpty && value.dueToday.isEmpty =>
-            const EmptyView(
-              key: ValueKey('empty'),
-              message: 'Nothing due — nice.',
-              icon: Icons.event_available,
-            ),
-          AsyncValue(:final value?) => KeyedSubtree(
-            key: const ValueKey('data'),
-            child: _TodayList(buckets: value, today: today),
-          ),
-          _ => const Center(
-            key: ValueKey('loading'),
-            child: CircularProgressIndicator(),
-          ),
-        },
+      body: AsyncSwitcher(
+        value: todayAsync,
+        isEmpty: (buckets) =>
+            buckets.overdue.isEmpty && buckets.dueToday.isEmpty,
+        empty: const EmptyView(
+          message: 'Nothing due — nice.',
+          icon: Icons.event_available,
+        ),
+        data: (buckets) => _TodayList(buckets: buckets, today: today),
       ),
     );
   }
