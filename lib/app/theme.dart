@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 
-/// Light Material 3 theme, seeded from the brand color.
-final ThemeData lightTheme = ThemeData(
-  colorScheme: .fromSeed(seedColor: Colors.indigo),
+/// The brand seed colour both [lightTheme] and [darkTheme] derive from, so the
+/// two schemes stay in lockstep.
+const Color _seedColor = Colors.indigo;
+
+/// Builds a Material 3 theme for [brightness], seeded from [_seedColor].
+ThemeData _themeFor(Brightness brightness) => ThemeData(
+  colorScheme: .fromSeed(seedColor: _seedColor, brightness: brightness),
 );
 
-/// Dark Material 3 theme, seeded from the brand color.
-final ThemeData darkTheme = ThemeData(
-  colorScheme: .fromSeed(
-    seedColor: Colors.indigo,
-    brightness: Brightness.dark,
-  ),
-);
+/// Light Material 3 theme, seeded from the brand colour.
+final ThemeData lightTheme = _themeFor(Brightness.light);
+
+/// Dark Material 3 theme, seeded from the brand colour.
+final ThemeData darkTheme = _themeFor(Brightness.dark);

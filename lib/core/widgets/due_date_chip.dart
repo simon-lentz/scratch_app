@@ -14,19 +14,34 @@ class DueDateChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final label = describe(status);
     final scheme = Theme.of(context).colorScheme;
     final overdue = status is Overdue;
     final fg = overdue ? scheme.onErrorContainer : scheme.onSurfaceVariant;
     final bg = overdue ? scheme.errorContainer : scheme.surfaceContainerHighest;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        describe(status),
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: fg),
+    final textStyle = Theme.of(
+      context,
+    ).textTheme.labelSmall?.copyWith(color: fg);
+    return Semantics(
+      label: label,
+      child: ExcludeSemantics(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (overdue) ...[
+                Icon(Icons.error_outline, size: 14, color: fg),
+                const SizedBox(width: 4),
+              ],
+              Text(label, style: textStyle),
+            ],
+          ),
+        ),
       ),
     );
   }

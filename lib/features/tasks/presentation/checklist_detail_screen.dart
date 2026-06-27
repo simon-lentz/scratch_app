@@ -4,11 +4,11 @@ import 'package:checkplan/core/result.dart';
 import 'package:checkplan/core/time/current_day.dart';
 import 'package:checkplan/core/time/epoch_day.dart';
 import 'package:checkplan/core/validation.dart';
+import 'package:checkplan/core/widgets/async_switcher.dart';
 import 'package:checkplan/core/widgets/confirm_delete_dialog.dart';
 import 'package:checkplan/core/widgets/empty_view.dart';
 import 'package:checkplan/core/widgets/error_snackbar.dart';
 import 'package:checkplan/core/widgets/name_dialog.dart';
-import 'package:checkplan/core/widgets/stream_error_view.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:checkplan/features/tasks/application/subtask_providers.dart';
 import 'package:checkplan/features/tasks/application/task_providers.dart';
@@ -36,20 +36,19 @@ class ChecklistDetailScreen extends ConsumerWidget {
     final tasksAsync = ref.watch(tasksForChecklistProvider(checklistId));
     return Scaffold(
       appBar: AppBar(title: Text(title)),
-      body: switch (tasksAsync) {
-        AsyncData(:final value) when value.isEmpty => const EmptyView(
+      body: AsyncSwitcher(
+        value: tasksAsync,
+        isEmpty: (tasks) => tasks.isEmpty,
+        empty: const EmptyView(
           message: 'No tasks yet',
+          icon: Icons.task_alt,
         ),
-        AsyncData(:final value) => _TaskList(
-          tasks: value,
-          checklistId: checklistId,
-        ),
-        AsyncError(:final error) => StreamErrorView(error: error),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+        data: (tasks) => _TaskList(tasks: tasks, checklistId: checklistId),
+      ),
       floatingActionButton: switch (tasksAsync) {
         AsyncData() => FloatingActionButton(
           onPressed: () => _addTask(context, ref, checklistId),
+          tooltip: 'New task',
           child: const Icon(Icons.add),
         ),
         _ => null,
@@ -209,19 +208,20 @@ class _TaskItemState extends ConsumerState<_TaskItem> {
   @override
   Widget build(BuildContext context) {
     final task = widget.view.task;
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Dismissible(
           key: ValueKey('dismiss-${task.id}'),
           direction: DismissDirection.endToStart,
-          background: const ColoredBox(
-            color: Colors.red,
+          background: ColoredBox(
+            color: scheme.errorContainer,
             child: Align(
               alignment: Alignment.centerRight,
               child: Padding(
-                padding: EdgeInsets.only(right: 16),
-                child: Icon(Icons.delete, color: Colors.white),
+                padding: const EdgeInsets.only(right: 16),
+                child: Icon(Icons.delete, color: scheme.onErrorContainer),
               ),
             ),
           ),
@@ -239,7 +239,14 @@ class _TaskItemState extends ConsumerState<_TaskItem> {
             onToggleExpanded: () => setState(() => _expanded = !_expanded),
           ),
         ),
-        if (_expanded) _subtasks(task.id),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          alignment: Alignment.topCenter,
+          child: _expanded
+              ? _subtasks(task.id)
+              : const SizedBox(width: double.infinity),
+        ),
       ],
     );
   }

@@ -108,6 +108,9 @@ class _NotFoundScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Not found')),
-    body: const EmptyView(message: 'That checklist does not exist'),
+    body: const EmptyView(
+      message: 'That checklist does not exist',
+      icon: Icons.search_off,
+    ),
   );
 }

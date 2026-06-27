@@ -2,8 +2,8 @@ import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/model/due_status.dart';
 import 'package:checkplan/core/time/current_day.dart';
 import 'package:checkplan/core/time/epoch_day.dart';
+import 'package:checkplan/core/widgets/async_switcher.dart';
 import 'package:checkplan/core/widgets/empty_view.dart';
-import 'package:checkplan/core/widgets/stream_error_view.dart';
 import 'package:checkplan/features/tasks/presentation/task_actions.dart';
 import 'package:checkplan/features/today/application/today_providers.dart';
 import 'package:checkplan/features/today/presentation/widgets/today_task_tile.dart';
@@ -22,18 +22,16 @@ class TodayScreen extends ConsumerWidget {
     final today = ref.watch(currentDayProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Today')),
-      body: switch (todayAsync) {
-        // Surface a stream error even when a stale value is retained.
-        AsyncError(:final error) => StreamErrorView(error: error),
-        // Match any state that carries a value (including an
-        // AsyncLoading-with-previous during the midnight rollover), so a list
-        // that has loaded once never blanks back to a spinner.
-        AsyncValue(:final value?)
-            when value.overdue.isEmpty && value.dueToday.isEmpty =>
-          const EmptyView(message: 'Nothing due — enjoy the day'),
-        AsyncValue(:final value?) => _TodayList(buckets: value, today: today),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+      body: AsyncSwitcher(
+        value: todayAsync,
+        isEmpty: (buckets) =>
+            buckets.overdue.isEmpty && buckets.dueToday.isEmpty,
+        empty: const EmptyView(
+          message: 'Nothing due — nice.',
+          icon: Icons.event_available,
+        ),
+        data: (buckets) => _TodayList(buckets: buckets, today: today),
+      ),
     );
   }
 }

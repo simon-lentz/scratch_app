@@ -2,10 +2,10 @@ import 'dart:async';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/reordering.dart';
 import 'package:checkplan/core/result.dart';
+import 'package:checkplan/core/widgets/async_switcher.dart';
 import 'package:checkplan/core/widgets/confirm_delete_dialog.dart';
 import 'package:checkplan/core/widgets/empty_view.dart';
 import 'package:checkplan/core/widgets/error_snackbar.dart';
-import 'package:checkplan/core/widgets/stream_error_view.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:checkplan/features/checklists/presentation/widgets/checklist_name_dialog.dart';
 import 'package:checkplan/features/checklists/presentation/widgets/checklist_tile.dart';
@@ -23,17 +23,19 @@ class ChecklistsScreen extends ConsumerWidget {
     final checklistsAsync = ref.watch(activeChecklistsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Lists')),
-      body: switch (checklistsAsync) {
-        AsyncData(:final value) when value.isEmpty => const EmptyView(
+      body: AsyncSwitcher(
+        value: checklistsAsync,
+        isEmpty: (summaries) => summaries.isEmpty,
+        empty: const EmptyView(
           message: 'No checklists yet',
+          icon: Icons.checklist,
         ),
-        AsyncData(:final value) => _ChecklistList(summaries: value),
-        AsyncError(:final error) => StreamErrorView(error: error),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+        data: (summaries) => _ChecklistList(summaries: summaries),
+      ),
       floatingActionButton: switch (checklistsAsync) {
         AsyncData() => FloatingActionButton(
           onPressed: () => _createChecklist(context, ref),
+          tooltip: 'New checklist',
           child: const Icon(Icons.add),
         ),
         _ => null,

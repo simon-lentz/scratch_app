@@ -12,4 +12,13 @@ void main() {
     );
     expect(find.text('Overdue 2d'), findsOneWidget);
   });
+
+  testWidgets('overdue shows a non-color icon signal', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: DueDateChip(status: Overdue(2))),
+      ),
+    );
+    expect(find.byIcon(Icons.error_outline), findsOneWidget);
+  });
 }

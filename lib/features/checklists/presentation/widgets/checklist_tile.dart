@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// menu of actions.
 ///
 /// A leaf widget that takes its data and callbacks as parameters and reads no
-/// providers, so it is easy to test and preview.
+/// providers, so it is easy to test in isolation.
 class ChecklistTile extends StatelessWidget {
   /// Creates a checklist row from [summary] and its action callbacks.
   const ChecklistTile({
@@ -48,12 +48,23 @@ class ChecklistTile extends StatelessWidget {
       title: Text(summary.checklist.title),
       subtitle: total == 0
           ? const Text('No tasks')
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('$done/$total'),
-                LinearProgressIndicator(value: done / total),
-              ],
+          : Semantics(
+              label: '$done of $total tasks done',
+              child: ExcludeSemantics(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('$done/$total'),
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: done / total),
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                      builder: (context, value, _) =>
+                          LinearProgressIndicator(value: value),
+                    ),
+                  ],
+                ),
+              ),
             ),
       trailing: PopupMenuButton<_ChecklistAction>(
         onSelected: (action) => switch (action) {

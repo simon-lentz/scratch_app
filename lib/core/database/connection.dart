@@ -1,11 +1,16 @@
 import 'package:checkplan/core/database/app_database.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
-/// Opens the app's on-disk database as `checkplan.sqlite` under the platform's
-/// application-documents directory (native SQLite via drift_flutter).
+/// The on-disk database name. On native platforms drift_flutter stores it as
+/// `checkplan.sqlite` under the application-documents directory; shared by
+/// [openAppDatabase] and the reset path so both open and delete the same file.
+const databaseName = 'checkplan';
+
+/// Opens the app's on-disk database (native `checkplan.sqlite`, under the
+/// platform's application-documents directory) via drift_flutter.
 ///
 /// `drift_flutter` opens lazily, so a failed open surfaces on the first query
 /// and the "Lists" screen's error state renders it.
 // coverage:ignore-start
-AppDatabase openAppDatabase() => AppDatabase(driftDatabase(name: 'checkplan'));
+AppDatabase openAppDatabase() => AppDatabase(driftDatabase(name: databaseName));
 // coverage:ignore-end

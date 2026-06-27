@@ -2,6 +2,7 @@ import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/model/due_status.dart';
 import 'package:checkplan/core/time/epoch_day.dart';
 import 'package:checkplan/core/widgets/due_date_chip.dart';
+import 'package:checkplan/core/widgets/labeled_checkbox.dart';
 import 'package:flutter/material.dart';
 
 /// A single task row: a done checkbox, the title, a due-date chip when the task
@@ -50,11 +51,13 @@ class TaskTile extends StatelessWidget {
         children: [
           IconButton(
             icon: Icon(expanded ? Icons.expand_less : Icons.expand_more),
+            tooltip: expanded ? 'Hide subtasks' : 'Show subtasks',
             onPressed: onToggleExpanded,
           ),
-          Checkbox(
+          LabeledCheckbox(
+            label: 'Toggle "${view.task.title}" done',
             value: view.task.isDone,
-            onChanged: (value) => onToggleDone(value ?? false),
+            onChanged: onToggleDone,
           ),
         ],
       ),

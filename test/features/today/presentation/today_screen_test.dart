@@ -35,7 +35,7 @@ void main() {
 
   testWidgets('shows the empty state when nothing is due', (tester) async {
     await pumpTodayScreen(tester, today: today);
-    expect(find.text('Nothing due — enjoy the day'), findsOneWidget);
+    expect(find.text('Nothing due — nice.'), findsOneWidget);
   });
 
   testWidgets('checking a task off removes it from Today', (tester) async {

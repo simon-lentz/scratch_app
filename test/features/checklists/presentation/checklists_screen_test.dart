@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:checkplan/core/database/app_database.dart';
+import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:checkplan/features/checklists/presentation/checklists_screen.dart';
@@ -78,5 +80,35 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byType(FloatingActionButton), findsNothing);
+  });
+
+  testWidgets('Retry re-runs the read and recovers', (tester) async {
+    // Key the failure on the database instance, not a build counter: Riverpod
+    // rebuilds a dependent once more right after the provider it watches is
+    // first created, so the override body runs twice for the initial database.
+    // Retry's invalidate yields a *new* instance, so the read then recovers.
+    final databases = <AppDatabase>{};
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          memoryDbOverride(),
+          activeChecklistsProvider.overrideWith((ref) {
+            databases.add(ref.watch(appDatabaseProvider));
+            return databases.length == 1
+                ? Stream<List<ChecklistSummary>>.error(Exception('read failed'))
+                : Stream.value(const <ChecklistSummary>[]);
+          }),
+        ],
+        child: const MaterialApp(home: ChecklistsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Something went wrong'), findsOneWidget);
+
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Something went wrong'), findsNothing);
+    expect(find.text('No checklists yet'), findsOneWidget);
   });
 }
