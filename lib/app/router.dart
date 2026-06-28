@@ -1,5 +1,6 @@
 import 'package:checkplan/core/time/current_day.dart';
 import 'package:checkplan/core/widgets/empty_view.dart';
+import 'package:checkplan/features/checklists/presentation/archived_checklists_screen.dart';
 import 'package:checkplan/features/checklists/presentation/checklists_screen.dart';
 import 'package:checkplan/features/tasks/presentation/checklist_detail_screen.dart';
 import 'package:checkplan/features/today/presentation/today_screen.dart';
@@ -35,6 +36,10 @@ GoRouter createAppRouter({String initialLocation = '/'}) => GoRouter(
                     if (id == null) return const _NotFoundScreen();
                     return ChecklistDetailScreen(checklistId: id);
                   },
+                ),
+                GoRoute(
+                  path: 'archived',
+                  builder: (context, state) => const ArchivedChecklistsScreen(),
                 ),
               ],
             ),

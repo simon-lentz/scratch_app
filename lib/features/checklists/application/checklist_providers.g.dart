@@ -106,6 +106,59 @@ final class ActiveChecklistsProvider
 
 String _$activeChecklistsHash() => r'd8046d7a9064f7b643ac59d590816b4a62dab633';
 
+/// Reactive list of archived checklists, most-recently-archived first.
+///
+/// Backs the archive view; re-emits whenever checklists or their tasks change.
+
+@ProviderFor(archivedChecklists)
+final archivedChecklistsProvider = ArchivedChecklistsProvider._();
+
+/// Reactive list of archived checklists, most-recently-archived first.
+///
+/// Backs the archive view; re-emits whenever checklists or their tasks change.
+
+final class ArchivedChecklistsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<ChecklistSummary>>,
+          List<ChecklistSummary>,
+          Stream<List<ChecklistSummary>>
+        >
+    with
+        $FutureModifier<List<ChecklistSummary>>,
+        $StreamProvider<List<ChecklistSummary>> {
+  /// Reactive list of archived checklists, most-recently-archived first.
+  ///
+  /// Backs the archive view; re-emits whenever checklists or their tasks change.
+  ArchivedChecklistsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'archivedChecklistsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$archivedChecklistsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<ChecklistSummary>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<ChecklistSummary>> create(Ref ref) {
+    return archivedChecklists(ref);
+  }
+}
+
+String _$archivedChecklistsHash() =>
+    r'4dcd285b273dca6cacbcb8a881365cb658abc6b9';
+
 /// Write commands for checklists.
 ///
 /// Holds no state of its own — the database is the state. Each command returns

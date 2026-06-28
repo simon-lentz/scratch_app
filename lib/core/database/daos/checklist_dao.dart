@@ -48,6 +48,45 @@ class ChecklistDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Archived checklists, most-recently-archived first (id as a stable
+  /// tiebreaker), each with its task `(done, total)` counts.
+  ///
+  /// The mirror of [watchActiveSummaries] for the archive view: same shape, but
+  /// it selects the archived rows (`archivedAt` set) and orders by when they
+  /// were archived rather than by `position`.
+  Stream<List<ChecklistSummary>> watchArchivedSummaries() {
+    final query = select(checklists).join([
+      // useColumns: false — read the counts, not the joined rows.
+      leftOuterJoin(
+        tasks,
+        tasks.checklistId.equalsExp(checklists.id),
+        useColumns: false,
+      ),
+    ]);
+    final readProgress = addProgressCounts(query, tasks.id, tasks.isDone);
+    query
+      ..where(checklists.archivedAt.isNotNull())
+      ..groupBy([checklists.id])
+      ..orderBy([
+        OrderingTerm(
+          expression: checklists.archivedAt,
+          mode: OrderingMode.desc,
+        ),
+        OrderingTerm(expression: checklists.id, mode: OrderingMode.desc),
+      ]);
+
+    return query.watch().map(
+      (rows) => rows
+          .map(
+            (row) => ChecklistSummary(
+              checklist: row.readTable(checklists),
+              progress: readProgress(row),
+            ),
+          )
+          .toList(),
+    );
+  }
+
   /// Creates a checklist with the given title at the next free position.
   ///
   /// Allocating the position and inserting run in one transaction, so the

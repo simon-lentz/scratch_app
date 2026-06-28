@@ -22,7 +22,16 @@ class ChecklistsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final checklistsAsync = ref.watch(activeChecklistsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Checklist Planner')),
+      appBar: AppBar(
+        title: const Text('Checklist Planner'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.archive_outlined),
+            tooltip: 'Archived',
+            onPressed: () => unawaited(context.push('/archived')),
+          ),
+        ],
+      ),
       body: AsyncSwitcher(
         value: checklistsAsync,
         isEmpty: (summaries) => summaries.isEmpty,
@@ -156,6 +165,12 @@ class _ChecklistList extends ConsumerWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Archived "${summary.checklist.title}"'),
+        // A SnackBar with an action defaults to persisting (Flutter sets
+        // persist = action != null), so without this the Undo bar would never
+        // clear itself. Restore is also reachable from the Archived view, so a
+        // finite window here is safe.
+        persist: false,
+        duration: const Duration(seconds: 5),
         action: SnackBarAction(
           label: 'Undo',
           onPressed: () async {

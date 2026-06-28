@@ -1,5 +1,6 @@
 import 'package:checkplan/app/app.dart';
 import 'package:checkplan/core/database/database_providers.dart';
+import 'package:checkplan/features/checklists/presentation/archived_checklists_screen.dart';
 import 'package:checkplan/features/checklists/presentation/widgets/checklist_tile.dart';
 import 'package:checkplan/features/tasks/presentation/checklist_detail_screen.dart';
 import 'package:flutter/material.dart';
@@ -55,5 +56,29 @@ void main() {
         .onOpen();
     await tester.pumpAndSettle();
     expect(find.byType(ChecklistDetailScreen), findsOneWidget); // still one
+  });
+
+  testWidgets('the Archived app-bar action opens the archive view', (
+    tester,
+  ) async {
+    final db = memoryDb();
+    final id = await db.checklistDao.create('Old');
+    await db.checklistDao.archive(id);
+    // The full app (router) is needed: the action pushes /archived.
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWith((ref) => db)],
+        child: const CheckPlanApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Archived'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ArchivedChecklistsScreen), findsOneWidget);
+    expect(find.text('Old'), findsOneWidget);
+    // Nested under the Lists branch, so the shell's nav bar stays.
+    expect(find.byType(NavigationBar), findsOneWidget);
   });
 }

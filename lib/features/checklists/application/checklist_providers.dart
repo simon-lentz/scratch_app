@@ -19,6 +19,13 @@ ChecklistDao checklistDao(Ref ref) =>
 Stream<List<ChecklistSummary>> activeChecklists(Ref ref) =>
     ref.watch(checklistDaoProvider).watchActiveSummaries();
 
+/// Reactive list of archived checklists, most-recently-archived first.
+///
+/// Backs the archive view; re-emits whenever checklists or their tasks change.
+@Riverpod(keepAlive: true)
+Stream<List<ChecklistSummary>> archivedChecklists(Ref ref) =>
+    ref.watch(checklistDaoProvider).watchArchivedSummaries();
+
 /// Write commands for checklists.
 ///
 /// Holds no state of its own — the database is the state. Each command returns

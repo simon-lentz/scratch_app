@@ -36,4 +36,22 @@ void main() {
 
     expect(find.text('Doomed'), findsNothing);
   });
+
+  testWidgets('the archive Undo bar auto-dismisses after its window', (
+    tester,
+  ) async {
+    final db = memoryDb();
+    await db.checklistDao.create('Temp');
+    await pumpChecklistsScreen(tester, db: db);
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Archive'));
+    await tester.pumpAndSettle();
+    expect(find.text('Undo'), findsOneWidget); // the bar is up
+
+    await tester.pump(const Duration(seconds: 6)); // past the dismiss window
+    await tester.pumpAndSettle();
+    expect(find.text('Undo'), findsNothing); // it cleared itself
+  });
 }

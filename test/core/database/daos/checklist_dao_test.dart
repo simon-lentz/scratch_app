@@ -162,4 +162,43 @@ void main() {
       ); // deterministic order
     },
   );
+
+  test('watchArchivedSummaries lists archived and excludes active', () async {
+    await dao.create('Active');
+    final archived = await dao.create('Archived');
+    await dao.archive(archived);
+
+    final summaries = await dao.watchArchivedSummaries().first;
+    expect(summaries.map((s) => s.checklist.title), ['Archived']);
+  });
+
+  test('restoring removes the checklist from the archived list', () async {
+    final id = await dao.create('Temp');
+    await dao.archive(id);
+    expect(await dao.watchArchivedSummaries().first, hasLength(1));
+
+    await dao.restore(id);
+    expect(await dao.watchArchivedSummaries().first, isEmpty);
+  });
+
+  test('deleting removes the checklist from the archived list', () async {
+    final id = await dao.create('Doomed');
+    await dao.archive(id);
+    expect(await dao.watchArchivedSummaries().first, hasLength(1));
+
+    await dao.deleteById(id);
+    expect(await dao.watchArchivedSummaries().first, isEmpty);
+  });
+
+  test('archived list is ordered most-recently-archived first', () async {
+    final first = await dao.create('First');
+    final second = await dao.create('Second');
+    await dao.archive(first);
+    await dao.archive(second);
+
+    final titles = (await dao.watchArchivedSummaries().first)
+        .map((s) => s.checklist.title)
+        .toList();
+    expect(titles, ['Second', 'First']);
+  });
 }
