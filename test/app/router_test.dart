@@ -87,8 +87,11 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-          clockProvider.overrideWithValue(() => now),
+          appDatabaseProvider.overrideWith((ref) => db),
+          clockProvider.overrideWith(
+            (ref) =>
+                () => now,
+          ),
         ],
         child: MaterialApp.router(routerConfig: router),
       ),

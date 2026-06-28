@@ -18,8 +18,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-          currentDayProvider.overrideWithValue(today),
+          appDatabaseProvider.overrideWith((ref) => db),
+          currentDayProvider.overrideWith((ref) => today),
         ],
         child: const CheckPlanApp(),
       ),

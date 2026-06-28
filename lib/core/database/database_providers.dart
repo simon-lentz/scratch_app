@@ -1,8 +1,10 @@
 import 'package:checkplan/core/database/app_database.dart';
 import 'package:checkplan/core/database/connection.dart';
-import 'package:checkplan/core/database/database_reset.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/misc.dart';
+import 'package:checkplan/core/database/database_reset.dart' as reset;
+import 'package:flutter_riverpod/flutter_riverpod.dart' show WidgetRef;
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'database_providers.g.dart';
 
 /// The single [AppDatabase] instance for the whole app.
 ///
@@ -10,9 +12,9 @@ import 'package:flutter_riverpod/misc.dart';
 /// with `openAppDatabase`'s result, and tests override it with an in-memory
 /// database. One shared instance is what makes drift's `.watch()` streams
 /// re-emit for every write.
-final appDatabaseProvider = Provider<AppDatabase>(
-  (ref) => throw UnimplementedError('appDatabaseProvider must be overridden'),
-);
+@Riverpod(keepAlive: true)
+AppDatabase appDatabase(Ref ref) =>
+    throw UnimplementedError('appDatabaseProvider must be overridden');
 
 /// The production override for [appDatabaseProvider].
 ///
@@ -42,11 +44,10 @@ Override appDatabaseOverride([AppDatabase Function() open = openAppDatabase]) =>
 
 /// The database-file deletion used by [resetDatabase], injected so tests can
 /// override it and touch no real files. Defaults to the platform
-/// [deleteAppDatabase] (an unsupported-throwing stub on web, where reset is
-/// never offered).
-final deleteAppDatabaseProvider = Provider<Future<void> Function()>(
-  (ref) => deleteAppDatabase,
-);
+/// [reset.deleteAppDatabase] (an unsupported-throwing stub on web, where reset
+/// is never offered).
+@Riverpod(keepAlive: true)
+Future<void> Function() deleteAppDatabase(Ref ref) => reset.deleteAppDatabase;
 
 /// Recovers from an unrecoverable open failure by erasing the database: closes
 /// the current connection, deletes the on-disk file via

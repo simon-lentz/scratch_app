@@ -3,27 +3,29 @@ import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/result.dart';
 import 'package:checkplan/core/validation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/misc.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'checklist_providers.g.dart';
 
 /// Accessor for the [ChecklistDao], backed by the shared database.
-final checklistDaoProvider = Provider<ChecklistDao>(
-  (ref) => ref.watch(appDatabaseProvider).checklistDao,
-);
+@Riverpod(keepAlive: true)
+ChecklistDao checklistDao(Ref ref) =>
+    ref.watch(appDatabaseProvider).checklistDao;
 
 /// Reactive list of non-archived checklists, each with its task progress.
 ///
 /// Re-emits whenever checklists or their tasks change.
-final activeChecklistsProvider = StreamProvider<List<ChecklistSummary>>(
-  (ref) => ref.watch(checklistDaoProvider).watchActiveSummaries(),
-);
+@Riverpod(keepAlive: true)
+Stream<List<ChecklistSummary>> activeChecklists(Ref ref) =>
+    ref.watch(checklistDaoProvider).watchActiveSummaries();
 
 /// Write commands for checklists.
 ///
 /// Holds no state of its own — the database is the state. Each command returns
 /// a [Result]: rejected input and caught exceptions become [Err]; programming
 /// bugs (`Error`) propagate.
-class ChecklistController extends Notifier<void> {
+@Riverpod(keepAlive: true)
+class ChecklistController extends _$ChecklistController {
   @override
   void build() {}
 
@@ -82,24 +84,18 @@ class ChecklistController extends Notifier<void> {
   });
 }
 
-/// Exposes [ChecklistController] for write commands.
-final checklistControllerProvider = NotifierProvider<ChecklistController, void>(
-  ChecklistController.new,
-);
-
 /// The active-list summary for one checklist id, or null if it is not in the
 /// active list (still loading, or archived).
 ///
 /// Derives from [activeChecklistsProvider] so the detail screen can title its
-/// app bar without a separate query. `autoDispose.family` for the same reasons
-/// as the other detail reads.
-final ProviderFamily<ChecklistSummary?, int> checklistByIdProvider = Provider
-    .autoDispose
-    .family<ChecklistSummary?, int>((ref, id) {
-      final summaries = ref.watch(activeChecklistsProvider).value;
-      if (summaries == null) return null;
-      for (final summary in summaries) {
-        if (summary.checklist.id == id) return summary;
-      }
-      return null;
-    });
+/// app bar without a separate query. `autoDispose` (the codegen default) for
+/// the same reasons as the other detail reads.
+@riverpod
+ChecklistSummary? checklistById(Ref ref, int id) {
+  final summaries = ref.watch(activeChecklistsProvider).value;
+  if (summaries == null) return null;
+  for (final summary in summaries) {
+    if (summary.checklist.id == id) return summary;
+  }
+  return null;
+}

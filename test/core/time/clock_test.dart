@@ -13,7 +13,12 @@ void main() {
   test('an overridden clock returns its fixed local time', () {
     final fixed = DateTime(2026, 6, 25, 9);
     final container = ProviderContainer.test(
-      overrides: [clockProvider.overrideWithValue(() => fixed)],
+      overrides: [
+        clockProvider.overrideWith(
+          (ref) =>
+              () => fixed,
+        ),
+      ],
     );
     expect(container.read(clockProvider)(), fixed);
   });

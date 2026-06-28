@@ -19,7 +19,7 @@ void main() {
     TaskDraft? draft;
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [currentDayProvider.overrideWithValue(today)],
+        overrides: [currentDayProvider.overrideWith((ref) => today)],
         child: MaterialApp(
           home: Scaffold(
             body: Builder(
@@ -54,7 +54,7 @@ void main() {
     TaskDraft? draft;
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [currentDayProvider.overrideWithValue(today)],
+        overrides: [currentDayProvider.overrideWith((ref) => today)],
         child: MaterialApp(
           home: Scaffold(
             body: Builder(
@@ -96,7 +96,7 @@ void main() {
     TaskDraft? draft;
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [currentDayProvider.overrideWithValue(today)],
+        overrides: [currentDayProvider.overrideWith((ref) => today)],
         child: MaterialApp(
           home: Scaffold(
             body: Builder(

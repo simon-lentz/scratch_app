@@ -9,7 +9,10 @@ void main() {
   test("currentDay is the EpochDay of the clock's local day", () {
     final container = ProviderContainer.test(
       overrides: [
-        clockProvider.overrideWithValue(() => DateTime(2026, 6, 25, 9)),
+        clockProvider.overrideWith(
+          (ref) =>
+              () => DateTime(2026, 6, 25, 9),
+        ),
       ],
     );
     expect(
@@ -25,7 +28,12 @@ void main() {
     final seen = <EpochDay>[];
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [clockProvider.overrideWithValue(() => now)],
+        overrides: [
+          clockProvider.overrideWith(
+            (ref) =>
+                () => now,
+          ),
+        ],
         child: Consumer(
           builder: (context, ref, _) {
             seen.add(ref.watch(currentDayProvider));

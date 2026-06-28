@@ -3,15 +3,24 @@ import 'package:checkplan/core/database/daos/subtask_dao.dart';
 import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/result.dart';
 import 'package:checkplan/core/validation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/misc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show StreamProvider;
+import 'package:flutter_riverpod/misc.dart' show StreamProviderFamily;
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'subtask_providers.g.dart';
 
 /// Accessor for the [SubtaskDao], backed by the shared database.
-final subtaskDaoProvider = Provider<SubtaskDao>(
-  (ref) => ref.watch(appDatabaseProvider).subtaskDao,
-);
+@Riverpod(keepAlive: true)
+SubtaskDao subtaskDao(Ref ref) => ref.watch(appDatabaseProvider).subtaskDao;
 
 /// Reactive list of a task's subtasks, keyed by task id and `autoDispose`.
+///
+/// Hand-written rather than `@riverpod`: this provider's value type names the
+/// drift row class [Subtask], which exists only in the generated
+/// `app_database.g.dart` part. `riverpod_generator` cannot resolve a type from
+/// another file's generated part during its shared-part build phase, so a
+/// generated provider here fails with `InvalidTypeException`. The accessor and
+/// controller below return hand-written types and are generated normally.
 final StreamProviderFamily<List<Subtask>, int> subtasksForTaskProvider =
     StreamProvider.autoDispose.family<List<Subtask>, int>(
       (ref, taskId) => ref.watch(subtaskDaoProvider).watchForTask(taskId),
@@ -21,7 +30,8 @@ final StreamProviderFamily<List<Subtask>, int> subtasksForTaskProvider =
 ///
 /// Holds no state of its own, the database is the state. Each command returns
 /// a [Result].
-class SubtaskController extends Notifier<void> {
+@Riverpod(keepAlive: true)
+class SubtaskController extends _$SubtaskController {
   @override
   void build() {}
 
@@ -46,8 +56,3 @@ class SubtaskController extends Notifier<void> {
     await _dao.deleteById(id);
   });
 }
-
-/// Exposes [SubtaskController] for subtask write commands.
-final subtaskControllerProvider = NotifierProvider<SubtaskController, void>(
-  SubtaskController.new,
-);

@@ -9,10 +9,11 @@ void main() {
   testWidgets('CheckPlanApp launches on the empty Lists screen', (
     tester,
   ) async {
+    final db = memoryDb();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          appDatabaseProvider.overrideWithValue(memoryDb()),
+          appDatabaseProvider.overrideWith((ref) => db),
         ],
         child: const CheckPlanApp(),
       ),
@@ -31,7 +32,7 @@ void main() {
   ) async {
     final db = memoryDb();
     Widget app() => ProviderScope(
-      overrides: [appDatabaseProvider.overrideWithValue(db)],
+      overrides: [appDatabaseProvider.overrideWith((ref) => db)],
       child: const CheckPlanApp(),
     );
     RouterConfig<Object>? routerOf() =>
