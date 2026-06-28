@@ -1,5 +1,6 @@
 import 'package:checkplan/core/color.dart';
 import 'package:checkplan/core/database/summaries.dart';
+import 'package:checkplan/core/optimistic_order.dart';
 import 'package:checkplan/core/reordering.dart';
 import 'package:checkplan/core/result.dart';
 import 'package:checkplan/core/time/current_day.dart';
@@ -82,22 +83,32 @@ Future<void> _addTask(
 }
 
 /// The non-empty list of task views.
-class _TaskList extends ConsumerWidget {
+class _TaskList extends ConsumerStatefulWidget {
   const _TaskList({required this.tasks, required this.checklistId});
 
   final List<TaskView> tasks;
   final int checklistId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_TaskList> createState() => _TaskListState();
+}
+
+class _TaskListState extends ConsumerState<_TaskList> {
+  // Reflects a just-dropped reorder immediately, before the write round-trips
+  // back through the stream — otherwise the list flickers the old order.
+  final _order = OptimisticOrder();
+
+  @override
+  Widget build(BuildContext context) {
     final today = ref.watch(currentDayProvider);
+    final tasks = _order.reconcile(widget.tasks, (view) => view.task.id);
     return ReorderableListView.builder(
       itemCount: tasks.length,
       onReorderItem: (oldIndex, newIndex) =>
-          _reorder(context, ref, oldIndex, newIndex),
-      // The row handlers below close over this build context (not a per-row
-      // builder context), so a row that unmounts mid-write can't suppress its
-      // error snackbar. Hence the wildcard parameter.
+          _reorder(tasks, oldIndex, newIndex),
+      // The row handlers below use this State's context (not a per-row builder
+      // context), so a row that unmounts mid-write can't suppress its error
+      // snackbar. Hence the wildcard parameter.
       itemBuilder: (_, index) {
         final view = tasks[index];
         return _TaskItem(
@@ -106,17 +117,16 @@ class _TaskList extends ConsumerWidget {
           today: today,
           onToggleDone: (isDone) =>
               toggleTaskDone(context, ref, view.task.id, isDone: isDone),
-          onEdit: () => _edit(context, ref, view),
+          onEdit: () => _edit(view),
           confirmAndDelete: () =>
-              _confirmAndDelete(context, ref, view.task.id, view.task.title),
+              _confirmAndDelete(view.task.id, view.task.title),
         );
       },
     );
   }
 
   Future<void> _reorder(
-    BuildContext context,
-    WidgetRef ref,
+    List<TaskView> tasks,
     int oldIndex,
     int newIndex,
   ) async {
@@ -125,11 +135,13 @@ class _TaskList extends ConsumerWidget {
       oldIndex,
       newIndex,
     );
+    setState(() => _order.apply(ids)); // show the new order this frame
     final result = await ref
         .read(taskControllerProvider.notifier)
-        .reorder(checklistId, ids);
-    if (!context.mounted) return;
+        .reorder(widget.checklistId, ids);
+    if (!mounted) return;
     if (result case Err()) {
+      setState(_order.clear); // write failed — fall back to the stream's order
       showErrorSnackBar(context, 'Could not reorder the tasks');
     }
   }
@@ -137,33 +149,24 @@ class _TaskList extends ConsumerWidget {
   // Confirms, then deletes, then always returns false: on success the reactive
   // stream removes the row (so the Dismissible never enters its dismissed state
   // mid-async-write); on failure the row stays and a snackbar shows.
-  Future<bool> _confirmAndDelete(
-    BuildContext context,
-    WidgetRef ref,
-    int id,
-    String title,
-  ) async {
+  Future<bool> _confirmAndDelete(int id, String title) async {
     final confirmed = await showConfirmDeleteDialog(
       context,
       title: 'Delete "$title"?',
       message: 'This also deletes its subtasks. This cannot be undone.',
     );
-    if (!confirmed || !context.mounted) return false;
+    if (!confirmed || !mounted) return false;
     final result = await ref.read(taskControllerProvider.notifier).delete(id);
-    if (!context.mounted) return false;
+    if (!mounted) return false;
     if (result case Err()) {
       showErrorSnackBar(context, 'Could not delete the task');
     }
     return false;
   }
 
-  Future<void> _edit(
-    BuildContext context,
-    WidgetRef ref,
-    TaskView view,
-  ) async {
+  Future<void> _edit(TaskView view) async {
     final draft = await showTaskEditorSheet(context, task: view.task);
-    if (draft == null || !context.mounted) return;
+    if (draft == null || !mounted) return;
     final result = await ref
         .read(taskControllerProvider.notifier)
         .edit(
@@ -172,7 +175,7 @@ class _TaskList extends ConsumerWidget {
           notes: draft.notes,
           dueDay: draft.dueDay,
         );
-    if (!context.mounted) return;
+    if (!mounted) return;
     if (result case Err()) {
       showErrorSnackBar(context, 'Could not save the task');
     }

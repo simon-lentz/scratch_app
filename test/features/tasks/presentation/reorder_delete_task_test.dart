@@ -40,4 +40,28 @@ void main() {
 
     expect(find.text('Doomed'), findsNothing);
   });
+
+  testWidgets('a reordered task appears in its new place immediately', (
+    tester,
+  ) async {
+    final db = memoryDb();
+    final list = await db.checklistDao.create('List');
+    final idA = await db.taskDao.add(list, 'A');
+    final idB = await db.taskDao.add(list, 'B');
+    await pumpChecklistDetailScreen(tester, db: db, checklistId: list);
+
+    final reorderable = tester.widget<ReorderableListView>(
+      find.byType(ReorderableListView),
+    );
+    reorderable.onReorderItem!(0, 1); // move A to the tail
+    // A single frame — before the async write round-trips through the stream.
+    await tester.pump();
+
+    final orderedIds = tester
+        .widgetList<TaskTile>(find.byType(TaskTile))
+        .map((tile) => (tile.key! as ValueKey<int>).value)
+        .toList();
+    expect(orderedIds, [idB, idA]);
+    await tester.pumpAndSettle(); // drain the async write for a clean teardown
+  });
 }

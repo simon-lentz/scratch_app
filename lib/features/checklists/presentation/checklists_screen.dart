@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:checkplan/core/database/summaries.dart';
+import 'package:checkplan/core/optimistic_order.dart';
 import 'package:checkplan/core/reordering.dart';
 import 'package:checkplan/core/result.dart';
 import 'package:checkplan/core/widgets/async_switcher.dart';
@@ -66,33 +67,46 @@ Future<void> _createChecklist(BuildContext context, WidgetRef ref) async {
 }
 
 /// The non-empty list of checklist summaries.
-class _ChecklistList extends ConsumerWidget {
+class _ChecklistList extends ConsumerStatefulWidget {
   const _ChecklistList({required this.summaries});
 
   final List<ChecklistSummary> summaries;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ChecklistList> createState() => _ChecklistListState();
+}
+
+class _ChecklistListState extends ConsumerState<_ChecklistList> {
+  // Reflects a just-dropped reorder immediately, before the write round-trips
+  // back through the stream — otherwise the list flickers the old order.
+  final _order = OptimisticOrder();
+
+  @override
+  Widget build(BuildContext context) {
+    final summaries = _order.reconcile(
+      widget.summaries,
+      (summary) => summary.checklist.id,
+    );
     return ReorderableListView.builder(
       itemCount: summaries.length,
       onReorderItem: (oldIndex, newIndex) =>
-          _reorder(context, ref, oldIndex, newIndex),
+          _reorder(summaries, oldIndex, newIndex),
       itemBuilder: (context, index) {
         final summary = summaries[index];
         return ChecklistTile(
           key: ValueKey(summary.checklist.id),
           summary: summary,
-          onRename: () => _rename(context, ref, summary),
-          onRecolor: () => _recolor(context, ref, summary.checklist.id),
-          onArchive: () => _archive(context, ref, summary),
-          onDelete: () => _delete(context, ref, summary),
-          onOpen: () => _open(context, summary.checklist.id),
+          onRename: () => _rename(summary),
+          onRecolor: () => _recolor(summary.checklist.id),
+          onArchive: () => _archive(summary),
+          onDelete: () => _delete(summary),
+          onOpen: () => _open(summary.checklist.id),
         );
       },
     );
   }
 
-  void _open(BuildContext context, int id) {
+  void _open(int id) {
     // Once a detail route is already on top, a repeat tap (a fast double-tap)
     // would stack a second screen; canPop() is true by then, so drop it.
     if (Navigator.of(context).canPop()) return;
@@ -100,8 +114,7 @@ class _ChecklistList extends ConsumerWidget {
   }
 
   Future<void> _reorder(
-    BuildContext context,
-    WidgetRef ref,
+    List<ChecklistSummary> summaries,
     int oldIndex,
     int newIndex,
   ) async {
@@ -110,20 +123,18 @@ class _ChecklistList extends ConsumerWidget {
       oldIndex,
       newIndex,
     );
+    setState(() => _order.apply(ids)); // show the new order this frame
     final result = await ref
         .read(checklistControllerProvider.notifier)
         .reorder(ids);
-    if (!context.mounted) return;
+    if (!mounted) return;
     if (result case Err()) {
+      setState(_order.clear); // write failed — fall back to the stream's order
       showErrorSnackBar(context, 'Could not reorder the checklists');
     }
   }
 
-  Future<void> _rename(
-    BuildContext context,
-    WidgetRef ref,
-    ChecklistSummary summary,
-  ) async {
+  Future<void> _rename(ChecklistSummary summary) async {
     final title = await showChecklistNameDialog(
       context,
       initialTitle: summary.checklist.title,
@@ -132,32 +143,28 @@ class _ChecklistList extends ConsumerWidget {
     final result = await ref
         .read(checklistControllerProvider.notifier)
         .rename(summary.checklist.id, title);
-    if (!context.mounted) return;
+    if (!mounted) return;
     if (result case Err()) {
       showErrorSnackBar(context, 'Could not rename the checklist');
     }
   }
 
-  Future<void> _recolor(BuildContext context, WidgetRef ref, int id) async {
+  Future<void> _recolor(int id) async {
     final choice = await showRecolorDialog(context);
-    if (choice == null || !context.mounted) return; // dismissed (no-op)
+    if (choice == null || !mounted) return; // dismissed (no-op)
     final result = await ref
         .read(checklistControllerProvider.notifier)
         .setColor(id, choice.color?.toARGB32());
-    if (!context.mounted) return;
+    if (!mounted) return;
     if (result case Err()) {
       showErrorSnackBar(context, 'Could not update the color');
     }
   }
 
-  Future<void> _archive(
-    BuildContext context,
-    WidgetRef ref,
-    ChecklistSummary summary,
-  ) async {
+  Future<void> _archive(ChecklistSummary summary) async {
     final controller = ref.read(checklistControllerProvider.notifier);
     final result = await controller.archive(summary.checklist.id);
-    if (!context.mounted) return;
+    if (!mounted) return;
     if (result case Err()) {
       showErrorSnackBar(context, 'Could not archive the checklist');
       return;
@@ -177,7 +184,7 @@ class _ChecklistList extends ConsumerWidget {
             final restoreResult = await controller.restore(
               summary.checklist.id,
             );
-            if (!context.mounted) return;
+            if (!mounted) return;
             if (restoreResult case Err()) {
               showErrorSnackBar(context, 'Could not restore the checklist');
             }
@@ -187,21 +194,17 @@ class _ChecklistList extends ConsumerWidget {
     );
   }
 
-  Future<void> _delete(
-    BuildContext context,
-    WidgetRef ref,
-    ChecklistSummary summary,
-  ) async {
+  Future<void> _delete(ChecklistSummary summary) async {
     final confirmed = await showConfirmDeleteDialog(
       context,
       title: 'Delete "${summary.checklist.title}"?',
       message: 'This also deletes its tasks. This cannot be undone.',
     );
-    if (!confirmed || !context.mounted) return;
+    if (!confirmed || !mounted) return;
     final result = await ref
         .read(checklistControllerProvider.notifier)
         .delete(summary.checklist.id);
-    if (!context.mounted) return;
+    if (!mounted) return;
     if (result case Err()) {
       showErrorSnackBar(context, 'Could not delete the checklist');
     }

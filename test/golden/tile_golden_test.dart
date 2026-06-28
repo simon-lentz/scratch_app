@@ -137,7 +137,7 @@ void main() {
           checklistTitle: 'Groceries',
         ),
         status: const Overdue(1),
-        onToggleDone: (_) {},
+        onComplete: () async => true,
       ),
     );
     await expectLater(

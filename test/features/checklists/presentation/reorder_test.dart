@@ -38,4 +38,29 @@ void main() {
         .toList();
     expect(orderedIds, [idB, idA]);
   });
+
+  testWidgets('a reordered row appears in its new place immediately', (
+    tester,
+  ) async {
+    final db = memoryDb();
+    final idA = await db.checklistDao.create('A');
+    final idB = await db.checklistDao.create('B');
+    await pumpChecklistsScreen(tester, db: db);
+
+    final reorderable = tester.widget<ReorderableListView>(
+      find.byType(ReorderableListView),
+    );
+    reorderable.onReorderItem!(0, 1); // move A to the tail
+    // A single frame — before the async write round-trips through the stream.
+    // Without optimistic ordering the list would still show the old order here
+    // (the flicker); with it, the new order is already on screen.
+    await tester.pump();
+
+    final orderedIds = tester
+        .widgetList<ChecklistTile>(find.byType(ChecklistTile))
+        .map((tile) => (tile.key! as ValueKey<int>).value)
+        .toList();
+    expect(orderedIds, [idB, idA]);
+    await tester.pumpAndSettle(); // drain the async write for a clean teardown
+  });
 }

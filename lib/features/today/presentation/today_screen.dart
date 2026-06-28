@@ -67,8 +67,7 @@ class _TodayList extends ConsumerWidget {
     key: ValueKey(entry.task.id),
     entry: entry,
     status: status,
-    onToggleDone: (isDone) =>
-        toggleTaskDone(context, ref, entry.task.id, isDone: isDone),
+    onComplete: () => toggleTaskDone(context, ref, entry.task.id, isDone: true),
   );
 }
 
