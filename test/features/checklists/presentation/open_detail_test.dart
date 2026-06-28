@@ -14,7 +14,7 @@ void main() {
     // The full app (router) is needed: tapping pushes /checklist/:id.
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [appDatabaseProvider.overrideWithValue(db)],
+        overrides: [appDatabaseProvider.overrideWith((ref) => db)],
         child: const CheckPlanApp(),
       ),
     );
@@ -38,7 +38,7 @@ void main() {
     final id = await db.checklistDao.create('Groceries');
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [appDatabaseProvider.overrideWithValue(db)],
+        overrides: [appDatabaseProvider.overrideWith((ref) => db)],
         child: const CheckPlanApp(),
       ),
     );

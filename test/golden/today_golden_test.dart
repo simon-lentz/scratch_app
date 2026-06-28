@@ -47,7 +47,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          currentDayProvider.overrideWithValue(_today),
+          currentDayProvider.overrideWith((ref) => _today),
           todayProvider.overrideWith((ref) => Stream.value(buckets)),
         ],
         child: const MaterialApp(home: TodayScreen()),

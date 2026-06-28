@@ -13,7 +13,7 @@ void main() {
     final container = ProviderContainer.test(
       overrides: [
         memoryDbOverride(),
-        currentDayProvider.overrideWithValue(today),
+        currentDayProvider.overrideWith((ref) => today),
       ],
     );
 

@@ -12,7 +12,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          appDatabaseProvider.overrideWithValue(memoryDb()),
+          appDatabaseProvider.overrideWith((ref) => memoryDb()),
         ],
         child: const CheckPlanApp(),
       ),
@@ -31,7 +31,7 @@ void main() {
   ) async {
     final db = memoryDb();
     Widget app() => ProviderScope(
-      overrides: [appDatabaseProvider.overrideWithValue(db)],
+      overrides: [appDatabaseProvider.overrideWith((ref) => db)],
       child: const CheckPlanApp(),
     );
     RouterConfig<Object>? routerOf() =>

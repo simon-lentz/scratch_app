@@ -32,9 +32,11 @@ void main() {
       ProviderScope(
         overrides: [
           appDatabaseOverride(open),
-          deleteAppDatabaseProvider.overrideWithValue(() async {
-            deleted++;
-          }),
+          deleteAppDatabaseProvider.overrideWith(
+            (ref) => () async {
+              deleted++;
+            },
+          ),
         ],
         child: const MaterialApp(home: ChecklistsScreen()),
       ),
@@ -64,9 +66,11 @@ void main() {
           activeChecklistsProvider.overrideWith(
             (ref) => Stream.error(Exception('boom')),
           ),
-          deleteAppDatabaseProvider.overrideWithValue(() async {
-            deleted++;
-          }),
+          deleteAppDatabaseProvider.overrideWith(
+            (ref) => () async {
+              deleted++;
+            },
+          ),
         ],
         child: const MaterialApp(home: ChecklistsScreen()),
       ),

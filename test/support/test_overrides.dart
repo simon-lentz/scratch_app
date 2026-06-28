@@ -13,8 +13,8 @@ import 'memory_db.dart';
 /// helper built on this is timer-safe by construction. Centralizes the database
 /// override and the default-day policy in one place.
 List<Override> baseTestOverrides({AppDatabase? db, EpochDay? today}) => [
-  appDatabaseProvider.overrideWithValue(db ?? memoryDb()),
-  currentDayProvider.overrideWithValue(
-    today ?? EpochDay.fromDateTime(DateTime(2026)),
+  appDatabaseProvider.overrideWith((ref) => db ?? memoryDb()),
+  currentDayProvider.overrideWith(
+    (ref) => today ?? EpochDay.fromDateTime(DateTime(2026)),
   ),
 ];

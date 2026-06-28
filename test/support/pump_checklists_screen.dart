@@ -22,7 +22,7 @@ Future<void> pumpChecklistsScreen(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        appDatabaseProvider.overrideWithValue(db ?? memoryDb()),
+        appDatabaseProvider.overrideWith((ref) => db ?? memoryDb()),
         ...overrides,
       ],
       child: const MaterialApp(home: ChecklistsScreen()),
