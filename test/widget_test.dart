@@ -9,10 +9,11 @@ void main() {
   testWidgets('CheckPlanApp launches on the empty Lists screen', (
     tester,
   ) async {
+    final db = memoryDb();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          appDatabaseProvider.overrideWith((ref) => memoryDb()),
+          appDatabaseProvider.overrideWith((ref) => db),
         ],
         child: const CheckPlanApp(),
       ),

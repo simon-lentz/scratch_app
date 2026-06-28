@@ -37,6 +37,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Something went wrong'), findsOneWidget);
 
+    // This deliberately re-opens the database, so two AppDatabase instances
+    // are briefly alive (the old one's close() is async). drift then logs
+    // "created the database class AppDatabase multiple times". It is benign:
+    // each open builds its own executor (not the shared QueryExecutor the
+    // warning guards against) and the old instance is closed on disposal.
+    // Debug-only.
     await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
 

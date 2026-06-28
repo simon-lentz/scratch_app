@@ -47,6 +47,12 @@ void main() {
     // Erase & start over: confirm the destructive dialog, then recover.
     await tester.tap(find.text('Erase & start over'));
     await tester.pumpAndSettle();
+    // This deliberately re-opens the database, so two AppDatabase instances
+    // are briefly alive (the old one's close() is async). drift then logs
+    // "created the database class AppDatabase multiple times". It is benign:
+    // each open builds its own executor (not the shared QueryExecutor the
+    // warning guards against) and the old instance is closed on disposal.
+    // Debug-only.
     await tester.tap(find.text('Erase'));
     await tester.pumpAndSettle();
 

@@ -19,10 +19,13 @@ Future<void> pumpChecklistsScreen(
   AppDatabase? db,
   List<Override> overrides = const [],
 }) async {
+  // Build the database once so invalidating appDatabaseProvider re-reads the
+  // same instance instead of a fresh empty one.
+  final database = db ?? memoryDb();
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        appDatabaseProvider.overrideWith((ref) => db ?? memoryDb()),
+        appDatabaseProvider.overrideWith((ref) => database),
         ...overrides,
       ],
       child: const MaterialApp(home: ChecklistsScreen()),

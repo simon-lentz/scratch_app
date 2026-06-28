@@ -9,12 +9,17 @@ import 'memory_db.dart';
 ///
 /// Pins `appDatabaseProvider` to a fresh in-memory database ([db] or a new
 /// [memoryDb]) and `currentDayProvider` to a fixed day ([today], default
-/// 2026-01-01). A current-day *value* override arms no midnight `Timer`, so any
-/// helper built on this is timer-safe by construction. Centralizes the database
-/// override and the default-day policy in one place.
-List<Override> baseTestOverrides({AppDatabase? db, EpochDay? today}) => [
-  appDatabaseProvider.overrideWith((ref) => db ?? memoryDb()),
-  currentDayProvider.overrideWith(
-    (ref) => today ?? EpochDay.fromDateTime(DateTime(2026)),
-  ),
-];
+/// 2026-01-01). Overriding `currentDayProvider` arms no midnight `Timer`, so
+/// any helper built on this is timer-safe by construction. Centralizes the
+/// database override and the default-day policy in one place.
+List<Override> baseTestOverrides({AppDatabase? db, EpochDay? today}) {
+  // Build the database once so invalidating appDatabaseProvider re-reads the
+  // same instance instead of a fresh empty one.
+  final database = db ?? memoryDb();
+  return [
+    appDatabaseProvider.overrideWith((ref) => database),
+    currentDayProvider.overrideWith(
+      (ref) => today ?? EpochDay.fromDateTime(DateTime(2026)),
+    ),
+  ];
+}
