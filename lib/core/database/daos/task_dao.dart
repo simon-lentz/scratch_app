@@ -57,26 +57,34 @@ class TaskDao extends DatabaseAccessor<AppDatabase>
   /// comparison is exact integer arithmetic. Tasks in archived checklists are
   /// excluded — an archived list is hidden everywhere, Today included.
   Stream<TodayBuckets> watchTodayBuckets(EpochDay today) {
-    final query =
-        select(tasks).join([
-            // useColumns: false — only the checklist title is needed.
-            innerJoin(
-              checklists,
-              checklists.id.equalsExp(tasks.checklistId),
-              useColumns: false,
-            ),
-          ])
-          ..addColumns([checklists.title])
-          ..where(
-            tasks.isDone.equals(false) &
-                tasks.dueDay.isNotNull() &
-                tasks.dueDay.isSmallerOrEqualValue(today.value) &
-                checklists.archivedAt.isNull(),
-          )
-          ..orderBy([
-            OrderingTerm(expression: tasks.dueDay),
-            OrderingTerm(expression: tasks.id),
-          ]);
+    final query = select(tasks).join([
+      // useColumns: false — only the checklist title (added below) and the
+      // subtask counts are read, not the joined rows themselves.
+      innerJoin(
+        checklists,
+        checklists.id.equalsExp(tasks.checklistId),
+        useColumns: false,
+      ),
+      leftOuterJoin(
+        subtasks,
+        subtasks.taskId.equalsExp(tasks.id),
+        useColumns: false,
+      ),
+    ]);
+    final readProgress = addProgressCounts(query, subtasks.id, subtasks.isDone);
+    query
+      ..addColumns([checklists.title])
+      ..where(
+        tasks.isDone.equals(false) &
+            tasks.dueDay.isNotNull() &
+            tasks.dueDay.isSmallerOrEqualValue(today.value) &
+            checklists.archivedAt.isNull(),
+      )
+      ..groupBy([tasks.id])
+      ..orderBy([
+        OrderingTerm(expression: tasks.dueDay),
+        OrderingTerm(expression: tasks.id),
+      ]);
 
     return query.watch().map((rows) {
       final overdue = <TodayTask>[];
@@ -87,6 +95,7 @@ class TaskDao extends DatabaseAccessor<AppDatabase>
           task: task,
           // Non-null: inner join on a NOT NULL column.
           checklistTitle: row.read(checklists.title)!,
+          subtaskProgress: readProgress(row),
         );
         // dueDay is non-null here (guarded by the WHERE above).
         if (task.dueDay! < today.value) {

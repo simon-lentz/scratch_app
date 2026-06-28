@@ -43,6 +43,29 @@ void main() {
     expect(find.text('Overdue 1d'), findsOneWidget);
   });
 
+  testWidgets('a Today task shows its subtask progress and notes', (
+    tester,
+  ) async {
+    final db = memoryDb();
+    final list = await db.checklistDao.create('Errands');
+    final id = await db.taskDao.add(list, 'Pack bags');
+    await db.taskDao.edit(
+      id,
+      title: 'Pack bags',
+      dueDay: today,
+      notes: 'passport + chargers',
+    );
+    final sub = await db.subtaskDao.add(id, 'shirts');
+    await db.subtaskDao.add(id, 'shoes');
+    await db.subtaskDao.setDone(sub, isDone: true);
+
+    await pumpTodayScreen(tester, db: db, today: today);
+
+    expect(find.text('Pack bags'), findsOneWidget);
+    expect(find.text('1/2'), findsOneWidget); // subtask hint
+    expect(find.text('passport + chargers'), findsOneWidget); // notes preview
+  });
+
   testWidgets('shows the empty state when nothing is due', (tester) async {
     await pumpTodayScreen(tester, today: today);
     expect(find.text('Nothing due — nice.'), findsOneWidget);

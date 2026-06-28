@@ -34,12 +34,14 @@ void main() {
         TodayTask(
           task: _task(1, 'Milk', _today.value - 1),
           checklistTitle: 'Groceries',
+          subtaskProgress: (0, 0),
         ),
       ],
       dueToday: [
         TodayTask(
           task: _task(2, 'Bread', _today.value),
           checklistTitle: 'Groceries',
+          subtaskProgress: (0, 0),
         ),
       ],
     );

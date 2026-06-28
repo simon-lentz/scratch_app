@@ -84,11 +84,15 @@ class _TodayTaskTileState extends State<TodayTaskTile>
   Widget build(BuildContext context) {
     final entry = widget.entry;
     final status = widget.status;
+    final (done, total) = entry.subtaskProgress;
+    final notes = entry.task.notes?.trim() ?? '';
+    final hasExtras = total > 0 || notes.isNotEmpty;
     return SizeTransition(
       sizeFactor: _shrink,
       child: FadeTransition(
         opacity: _shrink,
         child: ListTile(
+          isThreeLine: notes.isNotEmpty,
           leading: LabeledCheckbox(
             label: 'Toggle "${entry.task.title}" done',
             value: _completing,
@@ -100,10 +104,41 @@ class _TodayTaskTileState extends State<TodayTaskTile>
                 ? const TextStyle(decoration: TextDecoration.lineThrough)
                 : null,
           ),
-          subtitle: Text(entry.checklistTitle),
+          subtitle: hasExtras
+              ? _subtitle(entry.checklistTitle, done, total, notes)
+              : Text(entry.checklistTitle),
           trailing: status == null ? null : DueDateChip(status: status),
         ),
       ),
+    );
+  }
+
+  // The checklist title with an inline subtask `done/total` hint, plus a
+  // one-line notes preview beneath it — shown only when the task actually has
+  // subtasks or notes (otherwise the row keeps its plain single-line subtitle).
+  Widget _subtitle(String checklistTitle, int done, int total, String notes) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Flexible(
+              child: Text(
+                checklistTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (total > 0) ...[
+              const SizedBox(width: 12),
+              Text('$done/$total'),
+            ],
+          ],
+        ),
+        if (notes.isNotEmpty)
+          Text(notes, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ],
     );
   }
 }

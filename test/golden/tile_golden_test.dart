@@ -135,6 +135,7 @@ void main() {
         entry: TodayTask(
           task: _task(dueDay: _today.value - 1),
           checklistTitle: 'Groceries',
+          subtaskProgress: (0, 0),
         ),
         status: const Overdue(1),
         onComplete: () async => true,

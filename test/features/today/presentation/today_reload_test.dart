@@ -29,7 +29,13 @@ void main() {
     final controller = StreamController<TodayBuckets>.broadcast();
     addTearDown(controller.close);
     final buckets = TodayBuckets(
-      overdue: [TodayTask(task: task, checklistTitle: 'Errands')],
+      overdue: [
+        TodayTask(
+          task: task,
+          checklistTitle: 'Errands',
+          subtaskProgress: (0, 0),
+        ),
+      ],
       dueToday: const [],
     );
 

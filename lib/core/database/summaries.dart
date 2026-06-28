@@ -29,16 +29,24 @@ class TaskView {
   final Progress subtaskProgress;
 }
 
-/// A due task surfaced in the Today view, with its parent checklist's title.
+/// A due task surfaced in the Today view, with its parent checklist's title and
+/// its subtask `(done, total)` counts.
 class TodayTask {
-  /// Pairs a due task with the title of its owning checklist.
-  const TodayTask({required this.task, required this.checklistTitle});
+  /// Pairs a due task with its checklist title and subtask progress.
+  const TodayTask({
+    required this.task,
+    required this.checklistTitle,
+    required this.subtaskProgress,
+  });
 
   /// The due task surfaced in the Today view.
   final Task task;
 
   /// Title of the checklist that owns the task.
   final String checklistTitle;
+
+  /// Subtasks done out of total for the task. `(0, 0)` indicates no subtasks.
+  final Progress subtaskProgress;
 }
 
 /// Incomplete due tasks partitioned by the Today boundary.

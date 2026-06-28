@@ -79,6 +79,29 @@ void main() {
     expect(buckets.dueToday.single.checklistTitle, 'Errands');
   });
 
+  test('TodayTask carries its subtask (done, total) counts', () async {
+    final list = await checklists.create('Errands');
+    final today = day(2026, 6, 18);
+    final t = await tasks.add(list, 'pack');
+    await tasks.setDueDate(t, today);
+    final first = await db.subtaskDao.add(t, 'shirts');
+    await db.subtaskDao.add(t, 'shoes');
+    await db.subtaskDao.setDone(first, isDone: true);
+
+    final buckets = await tasks.watchTodayBuckets(today).first;
+    expect(buckets.dueToday.single.subtaskProgress, (1, 2));
+  });
+
+  test('a Today task with no subtasks reports (0, 0) progress', () async {
+    final list = await checklists.create('Errands');
+    final today = day(2026, 6, 18);
+    final t = await tasks.add(list, 'call');
+    await tasks.setDueDate(t, today);
+
+    final buckets = await tasks.watchTodayBuckets(today).first;
+    expect(buckets.dueToday.single.subtaskProgress, (0, 0));
+  });
+
   test('edit updates title and notes, then clears notes with null', () async {
     final list = await checklists.create('List');
     final id = await tasks.add(list, 'original');
