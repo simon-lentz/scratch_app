@@ -21,7 +21,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.widgetWithText(AppBar, 'Lists'),
+      find.widgetWithText(AppBar, 'Checklist Planner'),
       findsOneWidget,
     ); // app-bar title
     expect(find.text('No checklists yet'), findsOneWidget); // empty state

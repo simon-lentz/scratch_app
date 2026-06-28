@@ -41,7 +41,7 @@ void main() {
     NavigationBar navBar() =>
         tester.widget<NavigationBar>(find.byType(NavigationBar));
     expect(navBar().selectedIndex, 0);
-    expect(find.widgetWithText(AppBar, 'Lists'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Checklist Planner'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.today));
     await tester.pumpAndSettle();

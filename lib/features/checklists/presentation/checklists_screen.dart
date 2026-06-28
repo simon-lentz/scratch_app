@@ -22,7 +22,7 @@ class ChecklistsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final checklistsAsync = ref.watch(activeChecklistsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Lists')),
+      appBar: AppBar(title: const Text('Checklist Planner')),
       body: AsyncSwitcher(
         value: checklistsAsync,
         isEmpty: (summaries) => summaries.isEmpty,
