@@ -11,19 +11,35 @@ final class LoggingProviderObserver extends ProviderObserver {
   /// tests inject a capturing [sink].
   const LoggingProviderObserver({this.sink = _developerLog});
 
-  /// Where each formatted event line is written.
-  final void Function(String message) sink;
+  /// Where each formatted event line is written. The `error` and `stackTrace`
+  /// args are supplied only for a failure, so the default sink can forward them
+  /// to the structured fields of `dart:developer`'s log.
+  final void Function(String message, {Object? error, StackTrace? stackTrace})
+  sink;
 
-  static void _developerLog(String message) =>
-      developer.log(message, name: 'riverpod');
+  static void _developerLog(
+    String message, {
+    Object? error,
+    StackTrace? stackTrace,
+  }) => developer.log(
+    message,
+    name: 'riverpod',
+    error: error,
+    stackTrace: stackTrace,
+  );
 
   String _name(ProviderObserverContext context) =>
       context.provider.name ?? context.provider.runtimeType.toString();
 
-  // Cap a logged value so a large object can't flood the log.
+  // Cap a logged value so a large object can't flood the log. Truncate on a
+  // code-point boundary (via runes) so a surrogate pair at the cut is not split
+  // into a lone surrogate that renders as a replacement glyph. toString() runs
+  // in full before truncating — unavoidable to preview a value, and cheap
+  // enough for an observer registered only in debug builds.
   String _brief(Object? value) {
     final text = value.toString();
-    return text.length <= 80 ? text : '${text.substring(0, 77)}…';
+    if (text.length <= 80) return text;
+    return '${String.fromCharCodes(text.runes.take(77))}…';
   }
 
   @override
@@ -48,5 +64,9 @@ final class LoggingProviderObserver extends ProviderObserver {
     ProviderObserverContext context,
     Object error,
     StackTrace stackTrace,
-  ) => sink('! ${_name(context)} threw: $error');
+  ) => sink(
+    '! ${_name(context)} threw: $error',
+    error: error,
+    stackTrace: stackTrace,
+  );
 }
