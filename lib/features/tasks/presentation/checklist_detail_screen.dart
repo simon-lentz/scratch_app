@@ -33,7 +33,10 @@ class ChecklistDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final summary = ref.watch(checklistByIdProvider(checklistId));
+    final summary = switch (ref.watch(checklistByIdProvider(checklistId))) {
+      AsyncData(:final value) => value,
+      _ => null,
+    };
     final title = summary?.checklist.title ?? 'Checklist';
     final colorValue = summary?.checklist.colorValue;
     final barColor = colorValue == null ? null : Color(colorValue);

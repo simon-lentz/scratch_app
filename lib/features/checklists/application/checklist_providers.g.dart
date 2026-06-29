@@ -234,37 +234,36 @@ abstract class _$ChecklistController extends $Notifier<void> {
   }
 }
 
-/// The active-list summary for one checklist id, or null if it is not in the
-/// active list (still loading, or archived).
-///
-/// Derives from [activeChecklistsProvider] so the detail screen can title its
-/// app bar without a separate query. `autoDispose` (the codegen default) for
-/// the same reasons as the other detail reads.
+/// The summary for one checklist by [id] — title, color, and task progress —
+/// resolved directly from the database via [ChecklistDao.watchById], so it is
+/// correct for an archived checklist or a cold deep-link, not only for a
+/// checklist already in the active list. `autoDispose` (the codegen default)
+/// like the other detail reads.
 
 @ProviderFor(checklistById)
 final checklistByIdProvider = ChecklistByIdFamily._();
 
-/// The active-list summary for one checklist id, or null if it is not in the
-/// active list (still loading, or archived).
-///
-/// Derives from [activeChecklistsProvider] so the detail screen can title its
-/// app bar without a separate query. `autoDispose` (the codegen default) for
-/// the same reasons as the other detail reads.
+/// The summary for one checklist by [id] — title, color, and task progress —
+/// resolved directly from the database via [ChecklistDao.watchById], so it is
+/// correct for an archived checklist or a cold deep-link, not only for a
+/// checklist already in the active list. `autoDispose` (the codegen default)
+/// like the other detail reads.
 
 final class ChecklistByIdProvider
     extends
         $FunctionalProvider<
+          AsyncValue<ChecklistSummary?>,
           ChecklistSummary?,
-          ChecklistSummary?,
-          ChecklistSummary?
+          Stream<ChecklistSummary?>
         >
-    with $Provider<ChecklistSummary?> {
-  /// The active-list summary for one checklist id, or null if it is not in the
-  /// active list (still loading, or archived).
-  ///
-  /// Derives from [activeChecklistsProvider] so the detail screen can title its
-  /// app bar without a separate query. `autoDispose` (the codegen default) for
-  /// the same reasons as the other detail reads.
+    with
+        $FutureModifier<ChecklistSummary?>,
+        $StreamProvider<ChecklistSummary?> {
+  /// The summary for one checklist by [id] — title, color, and task progress —
+  /// resolved directly from the database via [ChecklistDao.watchById], so it is
+  /// correct for an archived checklist or a cold deep-link, not only for a
+  /// checklist already in the active list. `autoDispose` (the codegen default)
+  /// like the other detail reads.
   ChecklistByIdProvider._({
     required ChecklistByIdFamily super.from,
     required int super.argument,
@@ -288,22 +287,14 @@ final class ChecklistByIdProvider
 
   @$internal
   @override
-  $ProviderElement<ChecklistSummary?> $createElement(
+  $StreamProviderElement<ChecklistSummary?> $createElement(
     $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
+  ) => $StreamProviderElement(pointer);
 
   @override
-  ChecklistSummary? create(Ref ref) {
+  Stream<ChecklistSummary?> create(Ref ref) {
     final argument = this.argument as int;
     return checklistById(ref, argument);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(ChecklistSummary? value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<ChecklistSummary?>(value),
-    );
   }
 
   @override
@@ -317,17 +308,16 @@ final class ChecklistByIdProvider
   }
 }
 
-String _$checklistByIdHash() => r'65e4817829270bcf4d13d455425a8f97206ce46f';
+String _$checklistByIdHash() => r'29413f78823c25d3dc835b2c23d6457881f823d2';
 
-/// The active-list summary for one checklist id, or null if it is not in the
-/// active list (still loading, or archived).
-///
-/// Derives from [activeChecklistsProvider] so the detail screen can title its
-/// app bar without a separate query. `autoDispose` (the codegen default) for
-/// the same reasons as the other detail reads.
+/// The summary for one checklist by [id] — title, color, and task progress —
+/// resolved directly from the database via [ChecklistDao.watchById], so it is
+/// correct for an archived checklist or a cold deep-link, not only for a
+/// checklist already in the active list. `autoDispose` (the codegen default)
+/// like the other detail reads.
 
 final class ChecklistByIdFamily extends $Family
-    with $FunctionalFamilyOverride<ChecklistSummary?, int> {
+    with $FunctionalFamilyOverride<Stream<ChecklistSummary?>, int> {
   ChecklistByIdFamily._()
     : super(
         retry: null,
@@ -337,12 +327,11 @@ final class ChecklistByIdFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// The active-list summary for one checklist id, or null if it is not in the
-  /// active list (still loading, or archived).
-  ///
-  /// Derives from [activeChecklistsProvider] so the detail screen can title its
-  /// app bar without a separate query. `autoDispose` (the codegen default) for
-  /// the same reasons as the other detail reads.
+  /// The summary for one checklist by [id] — title, color, and task progress —
+  /// resolved directly from the database via [ChecklistDao.watchById], so it is
+  /// correct for an archived checklist or a cold deep-link, not only for a
+  /// checklist already in the active list. `autoDispose` (the codegen default)
+  /// like the other detail reads.
 
   ChecklistByIdProvider call(int id) =>
       ChecklistByIdProvider._(argument: id, from: this);

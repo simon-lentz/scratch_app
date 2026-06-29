@@ -1,0 +1,5 @@
+# Default owner for the whole repo — pull requests auto-request a review from
+# this owner. Do NOT pair this with a "require review from code owners" branch
+# protection rule while the project is solo: an author cannot approve their own
+# PR, which would deadlock merges.
+* @simon-lentz

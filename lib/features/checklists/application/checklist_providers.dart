@@ -91,18 +91,11 @@ class ChecklistController extends _$ChecklistController {
   });
 }
 
-/// The active-list summary for one checklist id, or null if it is not in the
-/// active list (still loading, or archived).
-///
-/// Derives from [activeChecklistsProvider] so the detail screen can title its
-/// app bar without a separate query. `autoDispose` (the codegen default) for
-/// the same reasons as the other detail reads.
+/// The summary for one checklist by [id] — title, color, and task progress —
+/// resolved directly from the database via [ChecklistDao.watchById], so it is
+/// correct for an archived checklist or a cold deep-link, not only for a
+/// checklist already in the active list. `autoDispose` (the codegen default)
+/// like the other detail reads.
 @riverpod
-ChecklistSummary? checklistById(Ref ref, int id) {
-  final summaries = ref.watch(activeChecklistsProvider).value;
-  if (summaries == null) return null;
-  for (final summary in summaries) {
-    if (summary.checklist.id == id) return summary;
-  }
-  return null;
-}
+Stream<ChecklistSummary?> checklistById(Ref ref, int id) =>
+    ref.watch(checklistDaoProvider).watchById(id);

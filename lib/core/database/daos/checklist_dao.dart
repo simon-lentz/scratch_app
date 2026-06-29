@@ -87,6 +87,35 @@ class ChecklistDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// The summary for the checklist with [id] — its row plus task `(done,
+  /// total)` counts — whether or not it is archived; `null` if no such
+  /// checklist exists. Querying by id directly (rather than deriving from
+  /// [watchActiveSummaries]) resolves an archived checklist or a cold deep-link
+  /// without waiting on the active list to load.
+  Stream<ChecklistSummary?> watchById(int id) {
+    final query = select(checklists).join([
+      // useColumns: false — read the counts, not the joined rows.
+      leftOuterJoin(
+        tasks,
+        tasks.checklistId.equalsExp(checklists.id),
+        useColumns: false,
+      ),
+    ]);
+    final readProgress = addProgressCounts(query, tasks.id, tasks.isDone);
+    query
+      ..where(checklists.id.equals(id))
+      ..groupBy([checklists.id]);
+
+    return query.watch().map(
+      (rows) => rows.isEmpty
+          ? null
+          : ChecklistSummary(
+              checklist: rows.first.readTable(checklists),
+              progress: readProgress(rows.first),
+            ),
+    );
+  }
+
   /// Creates a checklist with the given title at the next free position.
   ///
   /// Allocating the position and inserting run in one transaction, so the

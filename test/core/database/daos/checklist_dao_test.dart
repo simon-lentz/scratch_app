@@ -201,4 +201,23 @@ void main() {
         .toList();
     expect(titles, ['Second', 'First']);
   });
+
+  test('watchById emits the summary for an active checklist', () async {
+    final id = await dao.create('Groceries');
+    final summary = await dao.watchById(id).first;
+    expect(summary?.checklist.title, 'Groceries');
+    expect(summary?.progress, (0, 0));
+  });
+
+  test('watchById resolves an archived checklist, not only active', () async {
+    final id = await dao.create('Old');
+    await dao.archive(id);
+    final summary = await dao.watchById(id).first;
+    expect(summary?.checklist.title, 'Old');
+    expect(summary?.checklist.archivedAt, isNotNull);
+  });
+
+  test('watchById emits null for a missing id', () async {
+    expect(await dao.watchById(999).first, isNull);
+  });
 }
