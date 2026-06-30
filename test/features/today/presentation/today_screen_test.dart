@@ -57,7 +57,7 @@ void main() {
     );
     final sub = await db.subtaskDao.add(id, 'shirts');
     await db.subtaskDao.add(id, 'shoes');
-    await db.subtaskDao.setDone(sub, id, isDone: true);
+    await db.subtaskDao.setDone(sub, isDone: true);
 
     await pumpTodayScreen(tester, db: db, today: today);
 

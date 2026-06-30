@@ -37,11 +37,7 @@ class _FailingSubtaskController extends SubtaskController {
   @override
   Future<Result<int>> add(int taskId, String title) async => _boom();
   @override
-  Future<Result<void>> setDone(
-    int id,
-    int taskId, {
-    required bool isDone,
-  }) async => _boom();
+  Future<Result<void>> setDone(int id, {required bool isDone}) async => _boom();
   @override
   Future<Result<void>> delete(int id) async => _boom();
   @override

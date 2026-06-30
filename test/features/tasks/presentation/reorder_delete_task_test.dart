@@ -111,4 +111,40 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     }
   });
+
+  testWidgets('desktop renders a visible drag grip on each task row', (
+    tester,
+  ) async {
+    // The outer task list disabled the default handle (to scope long-press
+    // drags away from nested subtasks), so desktop/web — which has no
+    // long-press affordance — needs an explicit grip. Mirrors Flutter's own
+    // desktop default-handle rule (grip on linux/windows/macOS).
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      final db = memoryDb();
+      final list = await db.checklistDao.create('List');
+      await db.taskDao.add(list, 'A');
+      await pumpChecklistDetailScreen(tester, db: db, checklistId: list);
+
+      expect(find.byIcon(Icons.drag_handle), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('mobile shows no task drag grip (long-press to reorder)', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    try {
+      final db = memoryDb();
+      final list = await db.checklistDao.create('List');
+      await db.taskDao.add(list, 'A');
+      await pumpChecklistDetailScreen(tester, db: db, checklistId: list);
+
+      expect(find.byIcon(Icons.drag_handle), findsNothing);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
 }

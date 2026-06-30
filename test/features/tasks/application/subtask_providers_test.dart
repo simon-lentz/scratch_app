@@ -40,7 +40,7 @@ void main() {
     final task = await seedTask();
     final id = ((await controller().add(task, 'Step')) as Ok<int>).value;
     final dao = container.read(subtaskDaoProvider);
-    await controller().setDone(id, task, isDone: true);
+    await controller().setDone(id, isDone: true);
     expect((await dao.watchForTask(task).first).single.isDone, true);
     await controller().delete(id);
     expect(await dao.watchForTask(task).first, isEmpty);

@@ -25,14 +25,14 @@ class SubtaskDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
-  /// Adds a subtask to the task at the next free position.
-  ///
-  /// Allocating the position and inserting run in one transaction, so they are
-  /// atomic.
+  /// Adds a subtask to the task at the next free position, then reconciles the
+  /// parent task's completion — a new open subtask reopens an auto-completed
+  /// parent (see [_reconcileParentDone]). Position allocation, insert, and
+  /// reconcile run in one transaction, so they are atomic.
   Future<int> add(int taskId, String title) {
     return transaction(() async {
       final now = DateTime.timestamp();
-      return into(subtasks).insert(
+      final id = await into(subtasks).insert(
         SubtasksCompanion.insert(
           taskId: taskId,
           title: title,
@@ -45,38 +45,27 @@ class SubtaskDao extends DatabaseAccessor<AppDatabase>
           updatedAt: now,
         ),
       );
+      await _reconcileParentDone(taskId, now);
+      return id;
     });
   }
 
-  /// Sets subtask [id]'s completion flag; [taskId] is its parent task,
-  /// supplied by the caller so the cascade below needs no row re-read.
-  ///
-  /// Forward-only auto-complete: completing the last open subtask of a task
-  /// marks the parent task done, in the same transaction. Un-completing a
-  /// subtask never reopens the parent — the manual task checkbox stays the way
-  /// to reopen a completed task.
-  Future<void> setDone(int id, int taskId, {required bool isDone}) =>
-      transaction(() async {
-        final now = DateTime.timestamp();
-        final updated = await (update(subtasks)..where((s) => s.id.equals(id)))
-            .write(
-              SubtasksCompanion(isDone: Value(isDone), updatedAt: Value(now)),
-            );
-        // Forward-only, and only for a row that existed: write reports 0
-        // affected rows for an absent id, so an already-deleted subtask does
-        // not cascade to the parent.
-        if (!isDone || updated == 0) return;
-        final openCount = subtasks.id.count(
-          filter: subtasks.isDone.equals(false),
-        );
-        final query = selectOnly(subtasks)
-          ..addColumns([openCount])
-          ..where(subtasks.taskId.equals(taskId));
-        if ((await query.getSingle()).read(openCount) != 0) return;
-        await (update(tasks)..where((t) => t.id.equals(taskId))).write(
-          TasksCompanion(isDone: const Value(true), updatedAt: Value(now)),
-        );
-      });
+  /// Sets subtask [id]'s completion flag, then reconciles its parent task's
+  /// completion with the all-subtasks-done rule (see [_reconcileParentDone]),
+  /// both in one transaction. The parent id is derived from the row, so callers
+  /// pass only the subtask id.
+  Future<void> setDone(int id, {required bool isDone}) => transaction(() async {
+    final now = DateTime.timestamp();
+    final updated = await (update(subtasks)..where((s) => s.id.equals(id)))
+        .write(SubtasksCompanion(isDone: Value(isDone), updatedAt: Value(now)));
+    // An absent id (e.g. a row already deleted) writes 0 rows: nothing to
+    // reconcile.
+    if (updated == 0) return;
+    final row = await (select(
+      subtasks,
+    )..where((s) => s.id.equals(id))).getSingle();
+    await _reconcileParentDone(row.taskId, now);
+  });
 
   /// Renames the subtask with the given id.
   Future<int> rename(int id, String title) =>
@@ -87,9 +76,21 @@ class SubtaskDao extends DatabaseAccessor<AppDatabase>
         ),
       );
 
-  /// Hard-deletes the subtask.
-  Future<int> deleteById(int id) =>
-      (delete(subtasks)..where((s) => s.id.equals(id))).go();
+  /// Hard-deletes the subtask, then reconciles its parent task's completion —
+  /// removing the last open subtask can complete the parent (see
+  /// [_reconcileParentDone]) — both in one transaction.
+  Future<int> deleteById(int id) => transaction(() async {
+    final row = await (select(
+      subtasks,
+    )..where((s) => s.id.equals(id))).getSingleOrNull();
+    final deleted = await (delete(
+      subtasks,
+    )..where((s) => s.id.equals(id))).go();
+    if (row != null) {
+      await _reconcileParentDone(row.taskId, DateTime.timestamp());
+    }
+    return deleted;
+  });
 
   /// Rewrites positions within a task to match the given id order.
   ///
@@ -102,4 +103,28 @@ class SubtaskDao extends DatabaseAccessor<AppDatabase>
         SubtasksCompanion(position: Value(index), updatedAt: Value(now)),
     scope: subtasks.taskId.equals(taskId),
   );
+
+  /// Reconciles [taskId]'s completion flag with its subtasks: with subtasks
+  /// present, the task is done iff none are open; with no subtasks, completion
+  /// is left to the manual task checkbox. Writes only on a real transition, so
+  /// an already-consistent parent gets no redundant write — and so no spurious
+  /// stream re-emit or `updatedAt` bump. Call inside the mutating transaction.
+  Future<void> _reconcileParentDone(int taskId, DateTime now) async {
+    final open = subtasks.id.count(filter: subtasks.isDone.equals(false));
+    final total = subtasks.id.count();
+    final counts =
+        await (selectOnly(subtasks)
+              ..addColumns([open, total])
+              ..where(subtasks.taskId.equals(taskId)))
+            .getSingle();
+    // No subtasks: completion is manual, so leave the parent untouched.
+    if ((counts.read(total) ?? 0) == 0) return;
+    final shouldBeDone = (counts.read(open) ?? 0) == 0;
+    // The isDone guard makes this a no-op when the parent already matches.
+    final stmt = update(tasks)
+      ..where((t) => t.id.equals(taskId) & t.isDone.equals(!shouldBeDone));
+    await stmt.write(
+      TasksCompanion(isDone: Value(shouldBeDone), updatedAt: Value(now)),
+    );
+  }
 }

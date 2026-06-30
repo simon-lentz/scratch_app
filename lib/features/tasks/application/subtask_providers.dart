@@ -42,10 +42,11 @@ class SubtaskController extends _$SubtaskController {
   Future<Result<int>> add(int taskId, String title) =>
       guardTitle(title, (title) => _dao.add(taskId, title));
 
-  /// Sets subtask [id]'s completion flag; [taskId] is its parent task.
-  Future<Result<void>> setDone(int id, int taskId, {required bool isDone}) =>
+  /// Sets subtask [id]'s completion flag; the DAO reconciles its parent task's
+  /// completion (the symmetric all-subtasks-done rule).
+  Future<Result<void>> setDone(int id, {required bool isDone}) =>
       Result.guard(() async {
-        await _dao.setDone(id, taskId, isDone: isDone);
+        await _dao.setDone(id, isDone: isDone);
       });
 
   /// Permanently deletes subtask [id].

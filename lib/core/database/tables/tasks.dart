@@ -7,7 +7,8 @@ import 'package:drift/drift.dart';
 ///
 /// DateTime values are stored as ISO-8601 text.
 ///
-/// An item's completion status ([isDone]) is independent of its subtasks.
+/// While an item has subtasks, [isDone] is reconciled to them — done iff every
+/// subtask is done; with no subtasks, completion is set manually.
 @TableIndex(name: 'task_checklist_order', columns: {#checklistId, #position})
 @TableIndex(name: 'task_due', columns: {#dueDay})
 class Tasks extends Table {

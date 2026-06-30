@@ -86,7 +86,7 @@ void main() {
     await tasks.setDueDate(t, today);
     final first = await db.subtaskDao.add(t, 'shirts');
     await db.subtaskDao.add(t, 'shoes');
-    await db.subtaskDao.setDone(first, t, isDone: true);
+    await db.subtaskDao.setDone(first, isDone: true);
 
     final buckets = await tasks.watchTodayBuckets(today).first;
     expect(buckets.dueToday.single.subtaskProgress, (1, 2));

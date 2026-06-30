@@ -19,6 +19,7 @@ import 'package:checkplan/features/tasks/presentation/task_actions.dart';
 import 'package:checkplan/features/tasks/presentation/widgets/subtask_tile.dart';
 import 'package:checkplan/features/tasks/presentation/widgets/task_editor_sheet.dart';
 import 'package:checkplan/features/tasks/presentation/widgets/task_tile.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -286,6 +287,7 @@ class _TaskItemState extends ConsumerState<_TaskItem>
               onEdit: widget.onEdit,
               expanded: _expanded,
               onToggleExpanded: () => setState(() => _expanded = !_expanded),
+              dragHandle: _desktopDragHandle(),
             ),
           ),
         ),
@@ -301,8 +303,42 @@ class _TaskItemState extends ConsumerState<_TaskItem>
     );
   }
 
+  // On desktop/web the outer task list has no default handle (it was disabled
+  // to scope the long-press drag away from the nested subtasks), so a mouse
+  // user has no visible reorder affordance. Mirror Flutter's own desktop
+  // default: a grip that starts an immediate drag, with a grab cursor. Mobile
+  // keeps the long-press-on-tile drag and shows no grip.
+  Widget? _desktopDragHandle() {
+    final isDesktop = switch (defaultTargetPlatform) {
+      TargetPlatform.linux ||
+      TargetPlatform.windows ||
+      TargetPlatform.macOS => true,
+      _ => false,
+    };
+    if (!isDesktop) return null;
+    return MouseRegion(
+      cursor: SystemMouseCursors.grab,
+      child: ReorderableDragStartListener(
+        index: widget.index,
+        // Claim taps so a click on the grip doesn't fall through to the tile's
+        // onTap (edit); excludeFromSemantics keeps it out of the a11y tree.
+        child: GestureDetector(
+          onTap: () {},
+          excludeFromSemantics: true,
+          child: const Icon(Icons.drag_handle),
+        ),
+      ),
+    );
+  }
+
   Widget _subtasks(int taskId) {
     final subtasksAsync = ref.watch(subtasksForTaskProvider(taskId));
+    // Loading and error both collapse to an empty list: a subtask-query error
+    // is pre-empted by the screen-level AsyncSwitcher (which blocks expansion),
+    // and the brief first-expand loading frame is hidden by the enclosing
+    // AnimatedSize. A nested loading/error view is deliberately omitted — the
+    // shared AsyncSwitcher's full-screen destructive error arm is unfit inside
+    // a single task row.
     final value = switch (subtasksAsync) {
       AsyncData(:final value) => value,
       _ => const <Subtask>[],
@@ -334,7 +370,7 @@ class _TaskItemState extends ConsumerState<_TaskItem>
                 key: ValueKey(subtask.id),
                 subtask: subtask,
                 onToggleDone: (isDone) =>
-                    _toggleSub(subtask.id, subtask.taskId, isDone: isDone),
+                    _toggleSub(subtask.id, isDone: isDone),
                 onRename: () => _renameSub(subtask.id, subtask.title),
                 onDelete: () => _deleteSub(subtask.id),
                 dragHandle: ReorderableDragStartListener(
@@ -415,10 +451,10 @@ class _TaskItemState extends ConsumerState<_TaskItem>
     errorMessage: 'Could not reorder the subtasks',
   );
 
-  Future<void> _toggleSub(int id, int taskId, {required bool isDone}) async {
+  Future<void> _toggleSub(int id, {required bool isDone}) async {
     final result = await ref
         .read(subtaskControllerProvider.notifier)
-        .setDone(id, taskId, isDone: isDone);
+        .setDone(id, isDone: isDone);
     if (!mounted) return;
     if (result case Err()) {
       showErrorSnackBar(context, 'Could not update the subtask');

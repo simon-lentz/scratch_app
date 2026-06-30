@@ -20,6 +20,7 @@ class TaskTile extends StatelessWidget {
     required this.onEdit,
     required this.expanded,
     required this.onToggleExpanded,
+    this.dragHandle,
     super.key,
   });
 
@@ -40,6 +41,11 @@ class TaskTile extends StatelessWidget {
 
   /// Invoked when the user toggles the expand affordance.
   final VoidCallback onToggleExpanded;
+
+  /// An optional drag affordance rendered after the progress hint — supplied by
+  /// a reorderable parent (a [ReorderableDragStartListener]) on platforms that
+  /// need a visible handle; null when the row drags by long-press.
+  final Widget? dragHandle;
 
   @override
   Widget build(BuildContext context) {
@@ -66,8 +72,21 @@ class TaskTile extends StatelessWidget {
       ),
       title: Text(view.task.title),
       subtitle: _subtitle(status, notes),
-      // (0, 0) -> no subtasks -> no hint.
-      trailing: total == 0 ? null : Text('$done/$total'),
+      trailing: _trailing(done, total),
+    );
+  }
+
+  // The subtask-progress hint (none when the task has no subtasks), plus an
+  // optional drag grip from a reorderable parent. With no grip — every golden
+  // seed — this returns exactly the prior trailing (null or the lone hint), so
+  // the tile goldens are unchanged.
+  Widget? _trailing(int done, int total) {
+    final hint = total == 0 ? null : Text('$done/$total');
+    final handle = dragHandle;
+    if (handle == null) return hint;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [?hint, handle],
     );
   }
 

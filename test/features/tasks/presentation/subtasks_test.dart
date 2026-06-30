@@ -55,6 +55,33 @@ void main() {
     expect(find.textContaining('/'), findsNothing);
   });
 
+  testWidgets('completing then unchecking a subtask ticks then unticks the '
+      'parent task', (tester) async {
+    final db = memoryDb();
+    final list = await db.checklistDao.create('List');
+    final taskId = await db.taskDao.add(list, 'Task');
+    await db.subtaskDao.add(taskId, 'only');
+    await pumpChecklistDetailScreen(tester, db: db, checklistId: list);
+
+    await tester.tap(find.byIcon(Icons.expand_more));
+    await tester.pumpAndSettle();
+
+    // The parent task's checkbox renders before the subtask's.
+    Checkbox parentBox() =>
+        tester.widget<Checkbox>(find.byType(Checkbox).first);
+    expect(parentBox().value, isFalse);
+
+    // Complete the only subtask -> the parent auto-completes (symmetric rule).
+    await tester.tap(find.byType(Checkbox).last);
+    await tester.pumpAndSettle();
+    expect(parentBox().value, isTrue);
+
+    // Uncheck it -> an open subtask reopens the parent.
+    await tester.tap(find.byType(Checkbox).last);
+    await tester.pumpAndSettle();
+    expect(parentBox().value, isFalse);
+  });
+
   testWidgets('a rapid double-submit adds the subtask only once', (
     tester,
   ) async {
