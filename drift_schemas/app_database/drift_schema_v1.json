@@ -205,7 +205,11 @@
             "customConstraints": null,
             "default_dart": null,
             "default_client_dart": null,
-            "dsl_features": []
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const EpochDayConverter()",
+              "dart_type_name": "EpochDay"
+            }
           },
           {
             "name": "position",

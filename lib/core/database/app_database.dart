@@ -24,6 +24,8 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 1;
 
+  /// Schema migrations: see `drift_schemas/README.md`. v1 ships with `onCreate`
+  /// only; `onUpgrade` is added with the first schema-version bump.
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) => m.createAll(),

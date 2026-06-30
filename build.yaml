@@ -5,3 +5,8 @@ targets:
         # Configures drift to store `DateTime` as ISO-8601 text.
         options:
           store_date_time_values_as_text: true
+          # Consumed by the drift CLI (make-migrations / schema), not the builder:
+          databases:
+            app_database: lib/core/database/app_database.dart
+          schema_dir: drift_schemas/
+          test_dir: test/drift/
