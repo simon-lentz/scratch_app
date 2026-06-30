@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+/// The semantic label for a checkbox that toggles the done-state of the item
+/// titled [title] — the single source for this phrasing across the task,
+/// subtask, and Today rows.
+String toggleDoneLabel(String title) => 'Toggle "$title" done';
+
 /// A [Checkbox] with a merged semantic [label], so a screen reader announces
 /// the control by name instead of as an unlabelled toggle.
 ///

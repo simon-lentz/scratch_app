@@ -1,8 +1,13 @@
+import 'package:checkplan/core/database/app_database.dart';
 import 'package:checkplan/core/database/daos/checklist_dao.dart';
 import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/result.dart';
 import 'package:checkplan/core/validation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'
+    show Provider, StreamProvider;
+import 'package:flutter_riverpod/misc.dart'
+    show ProviderFamily, StreamProviderFamily;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'checklist_providers.g.dart';
@@ -43,26 +48,16 @@ class ChecklistController extends _$ChecklistController {
   /// Rejects an empty or over-length [title] with an [Err] wrapping a
   /// [ValidationException] before the database is touched ([titleError] is the
   /// authoritative check; the DB length constraint is only a backstop).
-  Future<Result<int>> create(String title) {
-    final error = titleError(title);
-    if (error != null) {
-      return Future.value(Err(ValidationException(error)));
-    }
-    return Result.guard(() => _dao.create(title.trim()));
-  }
+  Future<Result<int>> create(String title) =>
+      guardTitle(title, (title) => _dao.create(title));
 
   /// Renames the checklist [id] to the trimmed [title].
   ///
   /// Rejects an empty or over-length [title] like [create].
-  Future<Result<void>> rename(int id, String title) {
-    final error = titleError(title);
-    if (error != null) {
-      return Future.value(Err(ValidationException(error)));
-    }
-    return Result.guard(() async {
-      await _dao.rename(id, title.trim());
-    });
-  }
+  Future<Result<void>> rename(int id, String title) =>
+      guardTitle(title, (title) async {
+        await _dao.rename(id, title);
+      });
 
   /// Sets or clears the checklist [id]'s ARGB theme color.
   Future<Result<void>> setColor(int id, int? colorValue) =>
@@ -91,18 +86,38 @@ class ChecklistController extends _$ChecklistController {
   });
 }
 
-/// The active-list summary for one checklist id, or null if it is not in the
-/// active list (still loading, or archived).
+/// The live checklist row for the given id, resolved by id so it is correct
+/// for an archived checklist or a cold deep-link, not only one already in the
+/// active list. Hand-written rather than `@riverpod` because its value type
+/// names the drift row class [Checklist], which `riverpod_generator` cannot
+/// resolve from another file's generated part (the same limit that makes
+/// `subtasksForTaskProvider` hand-written). `autoDispose` like the other detail
+/// reads.
+final StreamProviderFamily<Checklist?, int> checklistRowByIdProvider =
+    StreamProvider.autoDispose.family<Checklist?, int>(
+      (ref, id) => ref.watch(checklistDaoProvider).watchRowById(id),
+    );
+
+/// The checklist row backing the detail app bar's title and color.
 ///
-/// Derives from [activeChecklistsProvider] so the detail screen can title its
-/// app bar without a separate query. `autoDispose` (the codegen default) for
-/// the same reasons as the other detail reads.
-@riverpod
-ChecklistSummary? checklistById(Ref ref, int id) {
-  final summaries = ref.watch(activeChecklistsProvider).value;
-  if (summaries == null) return null;
-  for (final summary in summaries) {
-    if (summary.checklist.id == id) return summary;
-  }
-  return null;
-}
+/// Returns the by-id row stream's value once it has emitted; until then it
+/// seeds from the warm [activeChecklistsProvider] row, so navigating from the
+/// list renders the real title and color on the first frame instead of
+/// flashing the fallback while the stream's first emission is in flight. A
+/// checklist absent from the active list (archived, or a cold deep-link) has no
+/// seed and resolves when the stream emits. Hand-written for the same reason as
+/// [checklistRowByIdProvider].
+final ProviderFamily<Checklist?, int> checklistByIdProvider = Provider
+    .autoDispose
+    .family<Checklist?, int>((ref, id) {
+      // The authoritative reactive source, once it has emitted.
+      final row = ref.watch(checklistRowByIdProvider(id)).value;
+      if (row != null) return row;
+      // First-frame seed (and loading fallback): the warm active-list row.
+      for (final summary
+          in ref.watch(activeChecklistsProvider).value ??
+              const <ChecklistSummary>[]) {
+        if (summary.checklist.id == id) return summary.checklist;
+      }
+      return null;
+    });

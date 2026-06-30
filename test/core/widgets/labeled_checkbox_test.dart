@@ -46,4 +46,8 @@ void main() {
     await tester.tap(find.byType(Checkbox));
     expect(toggled, isTrue);
   });
+
+  test('toggleDoneLabel wraps the title in the standard a11y phrasing', () {
+    expect(toggleDoneLabel('Apples'), 'Toggle "Apples" done');
+  });
 }

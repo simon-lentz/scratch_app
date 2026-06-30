@@ -56,4 +56,35 @@ void main() {
       expect(summaries.single.progress, (0, 0));
     },
   );
+
+  test(
+    'checklistById resolves from the warm active list on the first read',
+    () async {
+      final container = makeContainer();
+      final id = await container.read(checklistDaoProvider).create('Groceries');
+      // Warm the active list, as the lists screen does before navigating to
+      // detail.
+      container.listen(activeChecklistsProvider, (_, _) {});
+      await container.read(activeChecklistsProvider.future);
+
+      // The first synchronous read resolves from the warm list — it does not
+      // return null while the by-id row stream's first emission is in flight,
+      // so the detail app bar never flashes the fallback title.
+      expect(container.read(checklistByIdProvider(id))?.title, 'Groceries');
+    },
+  );
+
+  test(
+    'checklistById resolves an archived checklist via the by-id stream',
+    () async {
+      final container = makeContainer();
+      final id = await container.read(checklistDaoProvider).create('Old');
+      await container.read(checklistDaoProvider).archive(id);
+
+      // Absent from the active list; resolves once the by-id row stream emits.
+      container.listen(checklistByIdProvider(id), (_, _) {});
+      await container.read(checklistRowByIdProvider(id).future);
+      expect(container.read(checklistByIdProvider(id))?.title, 'Old');
+    },
+  );
 }

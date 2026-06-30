@@ -18,35 +18,13 @@ class ChecklistDao extends DatabaseAccessor<AppDatabase>
   /// each with its task `(done, total)` counts.
   ///
   /// Re-emits whenever checklists or tasks change.
-  Stream<List<ChecklistSummary>> watchActiveSummaries() {
-    final query = select(checklists).join([
-      // useColumns: false — read the counts, not the joined rows.
-      leftOuterJoin(
-        tasks,
-        tasks.checklistId.equalsExp(checklists.id),
-        useColumns: false,
-      ),
-    ]);
-    final readProgress = addProgressCounts(query, tasks.id, tasks.isDone);
-    query
-      ..where(checklists.archivedAt.isNull())
-      ..groupBy([checklists.id])
-      ..orderBy([
-        OrderingTerm(expression: checklists.position),
-        OrderingTerm(expression: checklists.id),
-      ]);
-
-    return query.watch().map(
-      (rows) => rows
-          .map(
-            (row) => ChecklistSummary(
-              checklist: row.readTable(checklists),
-              progress: readProgress(row),
-            ),
-          )
-          .toList(),
-    );
-  }
+  Stream<List<ChecklistSummary>> watchActiveSummaries() => _watchSummaries(
+    where: checklists.archivedAt.isNull(),
+    orderBy: [
+      OrderingTerm(expression: checklists.position),
+      OrderingTerm(expression: checklists.id),
+    ],
+  );
 
   /// Archived checklists, most-recently-archived first (id as a stable
   /// tiebreaker), each with its task `(done, total)` counts.
@@ -54,7 +32,22 @@ class ChecklistDao extends DatabaseAccessor<AppDatabase>
   /// The mirror of [watchActiveSummaries] for the archive view: same shape, but
   /// it selects the archived rows (`archivedAt` set) and orders by when they
   /// were archived rather than by `position`.
-  Stream<List<ChecklistSummary>> watchArchivedSummaries() {
+  Stream<List<ChecklistSummary>> watchArchivedSummaries() => _watchSummaries(
+    where: checklists.archivedAt.isNotNull(),
+    orderBy: [
+      OrderingTerm(expression: checklists.archivedAt, mode: OrderingMode.desc),
+      OrderingTerm(expression: checklists.id, mode: OrderingMode.desc),
+    ],
+  );
+
+  /// The shared task-progress summary query: each checklist matching [where],
+  /// ordered by [orderBy], with its task `(done, total)` counts. Backs both
+  /// [watchActiveSummaries] and [watchArchivedSummaries], which differ only in
+  /// which rows they select and how they order them.
+  Stream<List<ChecklistSummary>> _watchSummaries({
+    required Expression<bool> where,
+    required List<OrderingTerm> orderBy,
+  }) {
     final query = select(checklists).join([
       // useColumns: false — read the counts, not the joined rows.
       leftOuterJoin(
@@ -65,15 +58,9 @@ class ChecklistDao extends DatabaseAccessor<AppDatabase>
     ]);
     final readProgress = addProgressCounts(query, tasks.id, tasks.isDone);
     query
-      ..where(checklists.archivedAt.isNotNull())
+      ..where(where)
       ..groupBy([checklists.id])
-      ..orderBy([
-        OrderingTerm(
-          expression: checklists.archivedAt,
-          mode: OrderingMode.desc,
-        ),
-        OrderingTerm(expression: checklists.id, mode: OrderingMode.desc),
-      ]);
+      ..orderBy(orderBy);
 
     return query.watch().map(
       (rows) => rows
@@ -86,6 +73,16 @@ class ChecklistDao extends DatabaseAccessor<AppDatabase>
           .toList(),
     );
   }
+
+  /// The checklist row with [id], or `null` if none — whether or not it is
+  /// archived. A bare single-row read: it re-emits only when the checklist row
+  /// itself changes (rename, recolor, archive), not on every task change like
+  /// the summary queries. Resolving by id directly (rather than deriving from
+  /// [watchActiveSummaries]) covers an archived checklist or a cold deep-link
+  /// without waiting on the active list to load. The detail app bar needs only
+  /// the title and color, so the task-progress counts are deliberately omitted.
+  Stream<Checklist?> watchRowById(int id) =>
+      (select(checklists)..where((c) => c.id.equals(id))).watchSingleOrNull();
 
   /// Creates a checklist with the given title at the next free position.
   ///

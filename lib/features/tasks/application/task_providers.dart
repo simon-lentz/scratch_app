@@ -36,11 +36,8 @@ class TaskController extends _$TaskController {
   /// Adds a task to checklist [checklistId] from the (trimmed) [title].
   /// The [Ok] value is the new task's id.
   /// Rejects an empty or over-length [title].
-  Future<Result<int>> add(int checklistId, String title) {
-    final error = titleError(title);
-    if (error != null) return Future.value(Err(ValidationException(error)));
-    return Result.guard(() => _dao.add(checklistId, title.trim()));
-  }
+  Future<Result<int>> add(int checklistId, String title) =>
+      guardTitle(title, (title) => _dao.add(checklistId, title));
 
   /// Sets task [id]'s title, notes, and due date from the editor draft (a full
   /// write). Rejects an empty or over-length [title]; a null [notes]/[dueDay]
@@ -50,13 +47,9 @@ class TaskController extends _$TaskController {
     required String title,
     required EpochDay? dueDay,
     String? notes,
-  }) {
-    final error = titleError(title);
-    if (error != null) return Future.value(Err(ValidationException(error)));
-    return Result.guard(() async {
-      await _dao.edit(id, title: title.trim(), notes: notes, dueDay: dueDay);
-    });
-  }
+  }) => guardTitle(title, (title) async {
+    await _dao.edit(id, title: title, notes: notes, dueDay: dueDay);
+  });
 
   /// Sets task [id]'s own completion flag.
   Future<Result<void>> setDone(int id, {required bool isDone}) =>

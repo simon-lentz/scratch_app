@@ -206,7 +206,7 @@ final class TaskControllerProvider
   }
 }
 
-String _$taskControllerHash() => r'1d3fc2eda86377b05cf5ec7540c47b0fda2e7f26';
+String _$taskControllerHash() => r'4f66cf1e7f6d96b753bbb9788435a20e580fd0f2';
 
 /// Write commands for tasks.
 ///

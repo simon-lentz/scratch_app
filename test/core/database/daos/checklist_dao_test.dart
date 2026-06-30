@@ -201,4 +201,25 @@ void main() {
         .toList();
     expect(titles, ['Second', 'First']);
   });
+
+  test('watchRowById emits the row for an active checklist', () async {
+    final id = await dao.create('Groceries');
+    final row = await dao.watchRowById(id).first;
+    expect(row?.title, 'Groceries');
+  });
+
+  test(
+    'watchRowById resolves an archived checklist, not only active',
+    () async {
+      final id = await dao.create('Old');
+      await dao.archive(id);
+      final row = await dao.watchRowById(id).first;
+      expect(row?.title, 'Old');
+      expect(row?.archivedAt, isNotNull);
+    },
+  );
+
+  test('watchRowById emits null for a missing id', () async {
+    expect(await dao.watchRowById(999).first, isNull);
+  });
 }

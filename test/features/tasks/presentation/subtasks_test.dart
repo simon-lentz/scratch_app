@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../../../support/memory_db.dart';
 import '../../../support/pump_checklist_detail_screen.dart';
+import '../../../support/subtask_reorder.dart';
 
 /// A subtask controller whose `add` blocks on [release], so a test can hold the
 /// first write in flight and fire a second submit into the gap.
@@ -53,6 +54,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(SubtaskTile), findsNothing);
     expect(find.textContaining('/'), findsNothing);
+  });
+
+  testWidgets('completing then unchecking a subtask ticks then unticks the '
+      'parent task', (tester) async {
+    final db = memoryDb();
+    final list = await db.checklistDao.create('List');
+    final taskId = await db.taskDao.add(list, 'Task');
+    await db.subtaskDao.add(taskId, 'only');
+    await pumpChecklistDetailScreen(tester, db: db, checklistId: list);
+
+    await tester.tap(find.byIcon(Icons.expand_more));
+    await tester.pumpAndSettle();
+
+    // The parent task's checkbox renders before the subtask's.
+    Checkbox parentBox() =>
+        tester.widget<Checkbox>(find.byType(Checkbox).first);
+    expect(parentBox().value, isFalse);
+
+    // Complete the only subtask -> the parent auto-completes (symmetric rule).
+    await tester.tap(find.byType(Checkbox).last);
+    await tester.pumpAndSettle();
+    expect(parentBox().value, isTrue);
+
+    // Uncheck it -> an open subtask reopens the parent.
+    await tester.tap(find.byType(Checkbox).last);
+    await tester.pumpAndSettle();
+    expect(parentBox().value, isFalse);
   });
 
   testWidgets('a rapid double-submit adds the subtask only once', (
@@ -116,5 +144,68 @@ void main() {
     // row is created; with it, the title is capped and the subtask is added.
     final subtasks = await db.select(db.subtasks).get();
     expect(subtasks.single.title.length, maxTitleLength);
+  });
+
+  testWidgets('tapping a subtask renames it via the shared dialog', (
+    tester,
+  ) async {
+    final db = memoryDb();
+    final list = await db.checklistDao.create('List');
+    final taskId = await db.taskDao.add(list, 'Task');
+    await db.subtaskDao.add(taskId, 'old');
+    await pumpChecklistDetailScreen(tester, db: db, checklistId: list);
+
+    await tester.tap(find.byIcon(Icons.expand_more));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('old'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Title'), 'new');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('new'), findsOneWidget);
+    expect(find.text('old'), findsNothing);
+  });
+
+  testWidgets('dragging a subtask grip persists the new order', (tester) async {
+    final db = memoryDb();
+    final list = await db.checklistDao.create('List');
+    final taskId = await db.taskDao.add(list, 'Task');
+    final a = await db.subtaskDao.add(taskId, 'a');
+    final b = await db.subtaskDao.add(taskId, 'b');
+    await pumpChecklistDetailScreen(tester, db: db, checklistId: list);
+
+    await tester.tap(find.byIcon(Icons.expand_more));
+    await tester.pumpAndSettle();
+
+    reorderSubtask(tester, taskId, 0, 1);
+    await tester.pumpAndSettle();
+
+    final order = tester
+        .widgetList<SubtaskTile>(find.byType(SubtaskTile))
+        .map((tile) => (tile.key! as ValueKey<int>).value)
+        .toList();
+    expect(order, [b, a]);
+  });
+
+  testWidgets('tapping the subtask drag grip does not open the rename dialog', (
+    tester,
+  ) async {
+    final db = memoryDb();
+    final list = await db.checklistDao.create('List');
+    final taskId = await db.taskDao.add(list, 'Task');
+    await db.subtaskDao.add(taskId, 'sub');
+    await pumpChecklistDetailScreen(tester, db: db, checklistId: list);
+
+    await tester.tap(find.byIcon(Icons.expand_more));
+    await tester.pumpAndSettle();
+
+    // The grip claims drags, not taps; a bare tap on it must not fall through
+    // to the row's onTap (rename), so the rename dialog must not appear.
+    await tester.tap(find.byIcon(Icons.drag_indicator));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(TextField, 'Title'), findsNothing);
   });
 }

@@ -45,4 +45,30 @@ void main() {
     await controller().delete(id);
     expect(await dao.watchForTask(task).first, isEmpty);
   });
+
+  test('rename trims, validates, and updates the title', () async {
+    final task = await seedTask();
+    final id = ((await controller().add(task, 'old')) as Ok<int>).value;
+    expect(await controller().rename(id, '  new  '), isA<Ok<void>>());
+    final dao = container.read(subtaskDaoProvider);
+    expect((await dao.watchForTask(task).first).single.title, 'new');
+  });
+
+  test('rename rejects a blank title', () async {
+    final task = await seedTask();
+    final id = ((await controller().add(task, 'x')) as Ok<int>).value;
+    expect(await controller().rename(id, '   '), isA<Err<void>>());
+  });
+
+  test('reorder rewrites positions', () async {
+    final task = await seedTask();
+    final a = ((await controller().add(task, 'a')) as Ok<int>).value;
+    final b = ((await controller().add(task, 'b')) as Ok<int>).value;
+    expect(await controller().reorder(task, [b, a]), isA<Ok<void>>());
+    final dao = container.read(subtaskDaoProvider);
+    final titles = (await dao.watchForTask(task).first)
+        .map((s) => s.title)
+        .toList();
+    expect(titles, ['b', 'a']);
+  });
 }

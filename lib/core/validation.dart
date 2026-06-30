@@ -1,3 +1,5 @@
+import 'package:checkplan/core/result.dart';
+
 /// The maximum length of a checklist or task title.
 const int maxTitleLength = 200;
 
@@ -25,4 +27,19 @@ class ValidationException implements Exception {
 
   /// The human-readable reason the input was rejected (from [titleError]).
   final String message;
+}
+
+/// Runs a title-validated write: validates [title] with [titleError] and, on
+/// failure, returns an [Err] wrapping a [ValidationException] without running
+/// [action]. Otherwise runs [action] with the trimmed title under
+/// [Result.guard] — a caught exception becomes an [Err]; a programming `Error`
+/// propagates. Shared by every controller's create/rename/add/edit command so
+/// the validate-then-guard contract lives in one place.
+Future<Result<T>> guardTitle<T>(
+  String title,
+  Future<T> Function(String title) action,
+) {
+  final error = titleError(title);
+  if (error != null) return Future.value(Err(ValidationException(error)));
+  return Result.guard(() => action(title.trim()));
 }

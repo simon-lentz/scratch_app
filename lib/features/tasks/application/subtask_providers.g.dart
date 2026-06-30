@@ -99,7 +99,7 @@ final class SubtaskControllerProvider
   }
 }
 
-String _$subtaskControllerHash() => r'e472c6bab1965838199e6dee869c8c61b1e7760d';
+String _$subtaskControllerHash() => r'21e98b906a70f266f931a20725afe2acfdd22d5e';
 
 /// Write commands for subtasks (add / toggle / delete).
 ///

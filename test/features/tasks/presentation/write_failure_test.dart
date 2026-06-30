@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../../../support/memory_db.dart';
 import '../../../support/pump_checklist_detail_screen.dart';
+import '../../../support/subtask_reorder.dart';
 
 /// Task commands all fail, to drive the detail screen's error feedback while
 /// reads still come from a real in-memory DB so rows render to act on.
@@ -40,6 +41,11 @@ class _FailingSubtaskController extends SubtaskController {
   Future<Result<void>> setDone(int id, {required bool isDone}) async => _boom();
   @override
   Future<Result<void>> delete(int id) async => _boom();
+  @override
+  Future<Result<void>> rename(int id, String title) async => _boom();
+  @override
+  Future<Result<void>> reorder(int taskId, List<int> orderedIds) async =>
+      _boom();
 }
 
 void main() {
@@ -200,5 +206,49 @@ void main() {
     await tester.tap(find.byIcon(Icons.close)); // the subtask's delete button
     await tester.pumpAndSettle();
     expect(find.text('Could not delete the subtask'), findsOneWidget);
+  });
+
+  testWidgets('rename-subtask failure shows an error', (tester) async {
+    final db = memoryDb();
+    final list = await db.checklistDao.create('List');
+    final taskId = await db.taskDao.add(list, 'Task');
+    await db.subtaskDao.add(taskId, 'Step');
+    await pumpChecklistDetailScreen(
+      tester,
+      db: db,
+      checklistId: list,
+      overrides: [
+        subtaskControllerProvider.overrideWith(_FailingSubtaskController.new),
+      ],
+    );
+    await tester.tap(find.byIcon(Icons.expand_more));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Step')); // open the rename dialog
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Title'), 'Renamed');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('Could not rename the subtask'), findsOneWidget);
+  });
+
+  testWidgets('reorder-subtask failure shows an error', (tester) async {
+    final db = memoryDb();
+    final list = await db.checklistDao.create('List');
+    final taskId = await db.taskDao.add(list, 'Task');
+    await db.subtaskDao.add(taskId, 'a');
+    await db.subtaskDao.add(taskId, 'b');
+    await pumpChecklistDetailScreen(
+      tester,
+      db: db,
+      checklistId: list,
+      overrides: [
+        subtaskControllerProvider.overrideWith(_FailingSubtaskController.new),
+      ],
+    );
+    await tester.tap(find.byIcon(Icons.expand_more));
+    await tester.pumpAndSettle();
+    reorderSubtask(tester, taskId, 0, 1);
+    await tester.pumpAndSettle();
+    expect(find.text('Could not reorder the subtasks'), findsOneWidget);
   });
 }

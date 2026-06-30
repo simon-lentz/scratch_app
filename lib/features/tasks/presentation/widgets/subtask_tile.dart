@@ -10,7 +10,9 @@ class SubtaskTile extends StatelessWidget {
   const SubtaskTile({
     required this.subtask,
     required this.onToggleDone,
+    required this.onRename,
     required this.onDelete,
+    this.dragHandle,
     super.key,
   });
 
@@ -20,24 +22,39 @@ class SubtaskTile extends StatelessWidget {
   /// Invoked with the new done-state when the checkbox is toggled.
   final ValueChanged<bool> onToggleDone;
 
+  /// Invoked when the user taps the row to rename the subtask.
+  final VoidCallback onRename;
+
   /// Invoked when the user taps delete.
   final VoidCallback onDelete;
+
+  /// An optional drag affordance rendered before the delete button — supplied
+  /// by a reorderable parent (a [ReorderableDragStartListener]); null when the
+  /// row is not reorderable.
+  final Widget? dragHandle;
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
       dense: true,
       contentPadding: const EdgeInsets.only(left: 32, right: 8),
+      onTap: onRename,
       leading: LabeledCheckbox(
-        label: 'Toggle "${subtask.title}" done',
+        label: toggleDoneLabel(subtask.title),
         value: subtask.isDone,
         onChanged: onToggleDone,
       ),
       title: Text(subtask.title),
-      trailing: IconButton(
-        icon: const Icon(Icons.close),
-        tooltip: 'Delete subtask',
-        onPressed: onDelete,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ?dragHandle,
+          IconButton(
+            icon: const Icon(Icons.close),
+            tooltip: 'Delete subtask',
+            onPressed: onDelete,
+          ),
+        ],
       ),
     );
   }
