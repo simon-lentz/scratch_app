@@ -2,7 +2,6 @@ import 'package:checkplan/core/color.dart';
 import 'package:checkplan/core/database/app_database.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/optimistic_order.dart';
-import 'package:checkplan/core/reordering.dart';
 import 'package:checkplan/core/result.dart';
 import 'package:checkplan/core/time/current_day.dart';
 import 'package:checkplan/core/time/epoch_day.dart';
@@ -12,6 +11,7 @@ import 'package:checkplan/core/widgets/confirm_delete_dialog.dart';
 import 'package:checkplan/core/widgets/empty_view.dart';
 import 'package:checkplan/core/widgets/error_snackbar.dart';
 import 'package:checkplan/core/widgets/name_dialog.dart';
+import 'package:checkplan/core/widgets/optimistic_reorder.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:checkplan/features/tasks/application/subtask_providers.dart';
 import 'package:checkplan/features/tasks/application/task_providers.dart';
@@ -95,36 +95,8 @@ class _TaskList extends ConsumerStatefulWidget {
   ConsumerState<_TaskList> createState() => _TaskListState();
 }
 
-/// Shared optimistic-reorder protocol for the task and subtask lists: reflect a
-/// just-dropped order immediately, persist it, and roll back to the stream's
-/// order with an error snackbar if the write fails. Mixed into both
-/// [_TaskListState] and [_TaskItemState] so the protocol lives in one place.
-mixin _OptimisticReorder<T extends StatefulWidget> on State<T> {
-  /// Applies a drag-drop reorder of [currentIds] (moving [oldIndex] to
-  /// [newIndex]) through [order] optimistically, persists it via [persist], and
-  /// restores the stream's order with [errorMessage] if the write returns an
-  /// [Err].
-  Future<void> applyReorder({
-    required List<int> currentIds,
-    required int oldIndex,
-    required int newIndex,
-    required OptimisticOrder order,
-    required Future<Result<void>> Function(List<int> ids) persist,
-    required String errorMessage,
-  }) async {
-    final ids = reorderedIds(currentIds, oldIndex, newIndex);
-    setState(() => order.apply(ids)); // show the new order this frame
-    final result = await persist(ids);
-    if (!mounted) return;
-    if (result case Err()) {
-      setState(order.clear); // write failed — fall back to the stream's order
-      showErrorSnackBar(context, errorMessage);
-    }
-  }
-}
-
 class _TaskListState extends ConsumerState<_TaskList>
-    with _OptimisticReorder<_TaskList> {
+    with OptimisticReorder<_TaskList> {
   // Reflects a just-dropped reorder immediately, before the write round-trips
   // back through the stream — otherwise the list flickers the old order.
   final _order = OptimisticOrder();
@@ -235,19 +207,8 @@ class _TaskItem extends ConsumerStatefulWidget {
   ConsumerState<_TaskItem> createState() => _TaskItemState();
 }
 
-class _TaskItemState extends ConsumerState<_TaskItem>
-    with _OptimisticReorder<_TaskItem> {
+class _TaskItemState extends ConsumerState<_TaskItem> {
   bool _expanded = false;
-  final _addController = TextEditingController();
-  // Reflects a just-dropped subtask reorder immediately, before the write
-  // round-trips back through the stream — mirrors _TaskListState's _order.
-  final _subOrder = OptimisticOrder();
-
-  @override
-  void dispose() {
-    _addController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -296,7 +257,7 @@ class _TaskItemState extends ConsumerState<_TaskItem>
           curve: Curves.easeInOut,
           alignment: Alignment.topCenter,
           child: _expanded
-              ? _subtasks(task.id)
+              ? _SubtaskSection(taskId: task.id)
               : const SizedBox(width: double.infinity),
         ),
       ],
@@ -330,8 +291,37 @@ class _TaskItemState extends ConsumerState<_TaskItem>
       ),
     );
   }
+}
 
-  Widget _subtasks(int taskId) {
+/// The expanded task's subtask region: a reactive, reorderable list of subtasks
+/// plus an inline add field. Its own [ConsumerStatefulWidget] so subtask-stream
+/// emissions rebuild only this section, not the whole task tile above it.
+class _SubtaskSection extends ConsumerStatefulWidget {
+  const _SubtaskSection({required this.taskId});
+
+  /// The parent task whose subtasks this section shows and edits.
+  final int taskId;
+
+  @override
+  ConsumerState<_SubtaskSection> createState() => _SubtaskSectionState();
+}
+
+class _SubtaskSectionState extends ConsumerState<_SubtaskSection>
+    with OptimisticReorder<_SubtaskSection> {
+  final _addController = TextEditingController();
+  // Reflects a just-dropped subtask reorder immediately, before the write
+  // round-trips back through the stream — mirrors _TaskListState's _order.
+  final _subOrder = OptimisticOrder();
+
+  @override
+  void dispose() {
+    _addController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final taskId = widget.taskId;
     final subtasksAsync = ref.watch(subtasksForTaskProvider(taskId));
     // Loading and error both collapse to an empty list: a subtask-query error
     // is pre-empted by the screen-level AsyncSwitcher (which blocks expansion),
@@ -360,7 +350,6 @@ class _TaskItemState extends ConsumerState<_TaskItem>
             itemCount: rows.length,
             onReorderItem: (oldIndex, newIndex) => _reorderSub(
               rows.map((subtask) => subtask.id).toList(),
-              taskId,
               oldIndex,
               newIndex,
             ),
@@ -395,14 +384,14 @@ class _TaskItemState extends ConsumerState<_TaskItem>
             controller: _addController,
             decoration: const InputDecoration(hintText: 'Add subtask'),
             inputFormatters: [LengthLimitingTextInputFormatter(maxTitleLength)],
-            onSubmitted: (_) => _addSub(taskId),
+            onSubmitted: (_) => _addSub(),
           ),
         ),
       ],
     );
   }
 
-  Future<void> _addSub(int taskId) async {
+  Future<void> _addSub() async {
     final title = _addController.text;
     if (titleError(title) != null) return; // ignore empty input
     // Clear before the await: a second rapid submit then reads an empty field
@@ -411,7 +400,7 @@ class _TaskItemState extends ConsumerState<_TaskItem>
     _addController.clear();
     final result = await ref
         .read(subtaskControllerProvider.notifier)
-        .add(taskId, title);
+        .add(widget.taskId, title);
     if (!mounted) return;
     if (result case Err()) {
       _addController.text = title; // restore so a failed add can be retried
@@ -436,20 +425,17 @@ class _TaskItemState extends ConsumerState<_TaskItem>
     }
   }
 
-  Future<void> _reorderSub(
-    List<int> currentIds,
-    int taskId,
-    int oldIndex,
-    int newIndex,
-  ) => applyReorder(
-    currentIds: currentIds,
-    oldIndex: oldIndex,
-    newIndex: newIndex,
-    order: _subOrder,
-    persist: (ids) =>
-        ref.read(subtaskControllerProvider.notifier).reorder(taskId, ids),
-    errorMessage: 'Could not reorder the subtasks',
-  );
+  Future<void> _reorderSub(List<int> currentIds, int oldIndex, int newIndex) =>
+      applyReorder(
+        currentIds: currentIds,
+        oldIndex: oldIndex,
+        newIndex: newIndex,
+        order: _subOrder,
+        persist: (ids) => ref
+            .read(subtaskControllerProvider.notifier)
+            .reorder(widget.taskId, ids),
+        errorMessage: 'Could not reorder the subtasks',
+      );
 
   Future<void> _toggleSub(int id, {required bool isDone}) async {
     final result = await ref

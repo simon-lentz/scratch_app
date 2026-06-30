@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/optimistic_order.dart';
-import 'package:checkplan/core/reordering.dart';
 import 'package:checkplan/core/result.dart';
 import 'package:checkplan/core/widgets/async_switcher.dart';
 import 'package:checkplan/core/widgets/confirm_delete_dialog.dart';
 import 'package:checkplan/core/widgets/empty_view.dart';
 import 'package:checkplan/core/widgets/error_snackbar.dart';
+import 'package:checkplan/core/widgets/optimistic_reorder.dart';
 import 'package:checkplan/features/checklists/application/checklist_providers.dart';
 import 'package:checkplan/features/checklists/presentation/widgets/checklist_name_dialog.dart';
 import 'package:checkplan/features/checklists/presentation/widgets/checklist_tile.dart';
@@ -76,7 +76,8 @@ class _ChecklistList extends ConsumerStatefulWidget {
   ConsumerState<_ChecklistList> createState() => _ChecklistListState();
 }
 
-class _ChecklistListState extends ConsumerState<_ChecklistList> {
+class _ChecklistListState extends ConsumerState<_ChecklistList>
+    with OptimisticReorder<_ChecklistList> {
   // Reflects a just-dropped reorder immediately, before the write round-trips
   // back through the stream — otherwise the list flickers the old order.
   final _order = OptimisticOrder();
@@ -117,22 +118,15 @@ class _ChecklistListState extends ConsumerState<_ChecklistList> {
     List<ChecklistSummary> summaries,
     int oldIndex,
     int newIndex,
-  ) async {
-    final ids = reorderedIds(
-      summaries.map((s) => s.checklist.id).toList(),
-      oldIndex,
-      newIndex,
-    );
-    setState(() => _order.apply(ids)); // show the new order this frame
-    final result = await ref
-        .read(checklistControllerProvider.notifier)
-        .reorder(ids);
-    if (!mounted) return;
-    if (result case Err()) {
-      setState(_order.clear); // write failed — fall back to the stream's order
-      showErrorSnackBar(context, 'Could not reorder the checklists');
-    }
-  }
+  ) => applyReorder(
+    currentIds: summaries.map((s) => s.checklist.id).toList(),
+    oldIndex: oldIndex,
+    newIndex: newIndex,
+    order: _order,
+    persist: (ids) =>
+        ref.read(checklistControllerProvider.notifier).reorder(ids),
+    errorMessage: 'Could not reorder the checklists',
+  );
 
   Future<void> _rename(ChecklistSummary summary) async {
     final title = await showChecklistNameDialog(
