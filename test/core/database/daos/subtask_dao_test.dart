@@ -1,5 +1,4 @@
 import 'package:checkplan/core/database/app_database.dart';
-import 'package:checkplan/core/database/dao_support.dart';
 import 'package:checkplan/core/database/daos/checklist_dao.dart';
 import 'package:checkplan/core/database/daos/subtask_dao.dart';
 import 'package:checkplan/core/database/daos/task_dao.dart';
@@ -144,28 +143,17 @@ void main() {
     expect(titles, ['keep']);
   });
 
-  test('reorder rewrites subtask positions within the task', () async {
+  test('reorder moves a subtask to the head, before its old first', () async {
     final task = await seedTask();
     final a = await subtasks.add(task, 'a');
-    final b = await subtasks.add(task, 'b');
+    await subtasks.add(task, 'b');
     final c = await subtasks.add(task, 'c');
-    await subtasks.reorder(task, [c, a, b]);
+    // Move c to the front: nothing above it, a below it.
+    await subtasks.reorder(c, null, a);
 
     final titles = (await subtasks.watchForTask(task).first)
         .map((subtask) => subtask.title)
         .toList();
     expect(titles, ['c', 'a', 'b']);
-  });
-
-  test('reorder rejects a partial id set', () async {
-    final task = await seedTask();
-    final a = await subtasks.add(task, 'a');
-    await subtasks.add(task, 'b');
-    await subtasks.add(task, 'c');
-    // Omitting b and c would leave them colliding on stale positions.
-    await expectLater(
-      subtasks.reorder(task, [a]),
-      throwsA(isA<ReorderConflict>()),
-    );
   });
 }

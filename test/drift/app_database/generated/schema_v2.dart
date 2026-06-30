@@ -34,11 +34,11 @@ class Checklists extends Table with TableInfo<Checklists, ChecklistsData> {
     requiredDuringInsert: false,
     $customConstraints: 'NULL',
   );
-  late final GeneratedColumn<int> position = GeneratedColumn<int>(
-    'position',
+  late final GeneratedColumn<String> rank = GeneratedColumn<String>(
+    'rank',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
     $customConstraints: 'NOT NULL',
   );
@@ -71,7 +71,7 @@ class Checklists extends Table with TableInfo<Checklists, ChecklistsData> {
     id,
     title,
     colorValue,
-    position,
+    rank,
     createdAt,
     updatedAt,
     archivedAt,
@@ -99,9 +99,9 @@ class Checklists extends Table with TableInfo<Checklists, ChecklistsData> {
         DriftSqlType.int,
         data['${effectivePrefix}color_value'],
       ),
-      position: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}position'],
+      rank: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rank'],
       )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -131,7 +131,7 @@ class ChecklistsData extends DataClass implements Insertable<ChecklistsData> {
   final int id;
   final String title;
   final int? colorValue;
-  final int position;
+  final String rank;
   final String createdAt;
   final String updatedAt;
   final String? archivedAt;
@@ -139,7 +139,7 @@ class ChecklistsData extends DataClass implements Insertable<ChecklistsData> {
     required this.id,
     required this.title,
     this.colorValue,
-    required this.position,
+    required this.rank,
     required this.createdAt,
     required this.updatedAt,
     this.archivedAt,
@@ -152,7 +152,7 @@ class ChecklistsData extends DataClass implements Insertable<ChecklistsData> {
     if (!nullToAbsent || colorValue != null) {
       map['color_value'] = Variable<int>(colorValue);
     }
-    map['position'] = Variable<int>(position);
+    map['rank'] = Variable<String>(rank);
     map['created_at'] = Variable<String>(createdAt);
     map['updated_at'] = Variable<String>(updatedAt);
     if (!nullToAbsent || archivedAt != null) {
@@ -168,7 +168,7 @@ class ChecklistsData extends DataClass implements Insertable<ChecklistsData> {
       colorValue: colorValue == null && nullToAbsent
           ? const Value.absent()
           : Value(colorValue),
-      position: Value(position),
+      rank: Value(rank),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       archivedAt: archivedAt == null && nullToAbsent
@@ -186,7 +186,7 @@ class ChecklistsData extends DataClass implements Insertable<ChecklistsData> {
       id: serializer.fromJson<int>(json['id']),
       title: serializer.fromJson<String>(json['title']),
       colorValue: serializer.fromJson<int?>(json['colorValue']),
-      position: serializer.fromJson<int>(json['position']),
+      rank: serializer.fromJson<String>(json['rank']),
       createdAt: serializer.fromJson<String>(json['createdAt']),
       updatedAt: serializer.fromJson<String>(json['updatedAt']),
       archivedAt: serializer.fromJson<String?>(json['archivedAt']),
@@ -199,7 +199,7 @@ class ChecklistsData extends DataClass implements Insertable<ChecklistsData> {
       'id': serializer.toJson<int>(id),
       'title': serializer.toJson<String>(title),
       'colorValue': serializer.toJson<int?>(colorValue),
-      'position': serializer.toJson<int>(position),
+      'rank': serializer.toJson<String>(rank),
       'createdAt': serializer.toJson<String>(createdAt),
       'updatedAt': serializer.toJson<String>(updatedAt),
       'archivedAt': serializer.toJson<String?>(archivedAt),
@@ -210,7 +210,7 @@ class ChecklistsData extends DataClass implements Insertable<ChecklistsData> {
     int? id,
     String? title,
     Value<int?> colorValue = const Value.absent(),
-    int? position,
+    String? rank,
     String? createdAt,
     String? updatedAt,
     Value<String?> archivedAt = const Value.absent(),
@@ -218,7 +218,7 @@ class ChecklistsData extends DataClass implements Insertable<ChecklistsData> {
     id: id ?? this.id,
     title: title ?? this.title,
     colorValue: colorValue.present ? colorValue.value : this.colorValue,
-    position: position ?? this.position,
+    rank: rank ?? this.rank,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
@@ -230,7 +230,7 @@ class ChecklistsData extends DataClass implements Insertable<ChecklistsData> {
       colorValue: data.colorValue.present
           ? data.colorValue.value
           : this.colorValue,
-      position: data.position.present ? data.position.value : this.position,
+      rank: data.rank.present ? data.rank.value : this.rank,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       archivedAt: data.archivedAt.present
@@ -245,7 +245,7 @@ class ChecklistsData extends DataClass implements Insertable<ChecklistsData> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('colorValue: $colorValue, ')
-          ..write('position: $position, ')
+          ..write('rank: $rank, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('archivedAt: $archivedAt')
@@ -258,7 +258,7 @@ class ChecklistsData extends DataClass implements Insertable<ChecklistsData> {
     id,
     title,
     colorValue,
-    position,
+    rank,
     createdAt,
     updatedAt,
     archivedAt,
@@ -270,7 +270,7 @@ class ChecklistsData extends DataClass implements Insertable<ChecklistsData> {
           other.id == this.id &&
           other.title == this.title &&
           other.colorValue == this.colorValue &&
-          other.position == this.position &&
+          other.rank == this.rank &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.archivedAt == this.archivedAt);
@@ -280,7 +280,7 @@ class ChecklistsCompanion extends UpdateCompanion<ChecklistsData> {
   final Value<int> id;
   final Value<String> title;
   final Value<int?> colorValue;
-  final Value<int> position;
+  final Value<String> rank;
   final Value<String> createdAt;
   final Value<String> updatedAt;
   final Value<String?> archivedAt;
@@ -288,7 +288,7 @@ class ChecklistsCompanion extends UpdateCompanion<ChecklistsData> {
     this.id = const Value.absent(),
     this.title = const Value.absent(),
     this.colorValue = const Value.absent(),
-    this.position = const Value.absent(),
+    this.rank = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.archivedAt = const Value.absent(),
@@ -297,19 +297,19 @@ class ChecklistsCompanion extends UpdateCompanion<ChecklistsData> {
     this.id = const Value.absent(),
     required String title,
     this.colorValue = const Value.absent(),
-    required int position,
+    required String rank,
     required String createdAt,
     required String updatedAt,
     this.archivedAt = const Value.absent(),
   }) : title = Value(title),
-       position = Value(position),
+       rank = Value(rank),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<ChecklistsData> custom({
     Expression<int>? id,
     Expression<String>? title,
     Expression<int>? colorValue,
-    Expression<int>? position,
+    Expression<String>? rank,
     Expression<String>? createdAt,
     Expression<String>? updatedAt,
     Expression<String>? archivedAt,
@@ -318,7 +318,7 @@ class ChecklistsCompanion extends UpdateCompanion<ChecklistsData> {
       if (id != null) 'id': id,
       if (title != null) 'title': title,
       if (colorValue != null) 'color_value': colorValue,
-      if (position != null) 'position': position,
+      if (rank != null) 'rank': rank,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (archivedAt != null) 'archived_at': archivedAt,
@@ -329,7 +329,7 @@ class ChecklistsCompanion extends UpdateCompanion<ChecklistsData> {
     Value<int>? id,
     Value<String>? title,
     Value<int?>? colorValue,
-    Value<int>? position,
+    Value<String>? rank,
     Value<String>? createdAt,
     Value<String>? updatedAt,
     Value<String?>? archivedAt,
@@ -338,7 +338,7 @@ class ChecklistsCompanion extends UpdateCompanion<ChecklistsData> {
       id: id ?? this.id,
       title: title ?? this.title,
       colorValue: colorValue ?? this.colorValue,
-      position: position ?? this.position,
+      rank: rank ?? this.rank,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       archivedAt: archivedAt ?? this.archivedAt,
@@ -357,8 +357,8 @@ class ChecklistsCompanion extends UpdateCompanion<ChecklistsData> {
     if (colorValue.present) {
       map['color_value'] = Variable<int>(colorValue.value);
     }
-    if (position.present) {
-      map['position'] = Variable<int>(position.value);
+    if (rank.present) {
+      map['rank'] = Variable<String>(rank.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<String>(createdAt.value);
@@ -378,7 +378,7 @@ class ChecklistsCompanion extends UpdateCompanion<ChecklistsData> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('colorValue: $colorValue, ')
-          ..write('position: $position, ')
+          ..write('rank: $rank, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('archivedAt: $archivedAt')
@@ -442,11 +442,11 @@ class Tasks extends Table with TableInfo<Tasks, TasksData> {
     requiredDuringInsert: false,
     $customConstraints: 'NULL',
   );
-  late final GeneratedColumn<int> position = GeneratedColumn<int>(
-    'position',
+  late final GeneratedColumn<String> rank = GeneratedColumn<String>(
+    'rank',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
     $customConstraints: 'NOT NULL',
   );
@@ -474,7 +474,7 @@ class Tasks extends Table with TableInfo<Tasks, TasksData> {
     notes,
     isDone,
     dueDay,
-    position,
+    rank,
     createdAt,
     updatedAt,
   ];
@@ -513,9 +513,9 @@ class Tasks extends Table with TableInfo<Tasks, TasksData> {
         DriftSqlType.int,
         data['${effectivePrefix}due_day'],
       ),
-      position: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}position'],
+      rank: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rank'],
       )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -544,7 +544,7 @@ class TasksData extends DataClass implements Insertable<TasksData> {
   final String? notes;
   final int isDone;
   final int? dueDay;
-  final int position;
+  final String rank;
   final String createdAt;
   final String updatedAt;
   const TasksData({
@@ -554,7 +554,7 @@ class TasksData extends DataClass implements Insertable<TasksData> {
     this.notes,
     required this.isDone,
     this.dueDay,
-    required this.position,
+    required this.rank,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -571,7 +571,7 @@ class TasksData extends DataClass implements Insertable<TasksData> {
     if (!nullToAbsent || dueDay != null) {
       map['due_day'] = Variable<int>(dueDay);
     }
-    map['position'] = Variable<int>(position);
+    map['rank'] = Variable<String>(rank);
     map['created_at'] = Variable<String>(createdAt);
     map['updated_at'] = Variable<String>(updatedAt);
     return map;
@@ -589,7 +589,7 @@ class TasksData extends DataClass implements Insertable<TasksData> {
       dueDay: dueDay == null && nullToAbsent
           ? const Value.absent()
           : Value(dueDay),
-      position: Value(position),
+      rank: Value(rank),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -607,7 +607,7 @@ class TasksData extends DataClass implements Insertable<TasksData> {
       notes: serializer.fromJson<String?>(json['notes']),
       isDone: serializer.fromJson<int>(json['isDone']),
       dueDay: serializer.fromJson<int?>(json['dueDay']),
-      position: serializer.fromJson<int>(json['position']),
+      rank: serializer.fromJson<String>(json['rank']),
       createdAt: serializer.fromJson<String>(json['createdAt']),
       updatedAt: serializer.fromJson<String>(json['updatedAt']),
     );
@@ -622,7 +622,7 @@ class TasksData extends DataClass implements Insertable<TasksData> {
       'notes': serializer.toJson<String?>(notes),
       'isDone': serializer.toJson<int>(isDone),
       'dueDay': serializer.toJson<int?>(dueDay),
-      'position': serializer.toJson<int>(position),
+      'rank': serializer.toJson<String>(rank),
       'createdAt': serializer.toJson<String>(createdAt),
       'updatedAt': serializer.toJson<String>(updatedAt),
     };
@@ -635,7 +635,7 @@ class TasksData extends DataClass implements Insertable<TasksData> {
     Value<String?> notes = const Value.absent(),
     int? isDone,
     Value<int?> dueDay = const Value.absent(),
-    int? position,
+    String? rank,
     String? createdAt,
     String? updatedAt,
   }) => TasksData(
@@ -645,7 +645,7 @@ class TasksData extends DataClass implements Insertable<TasksData> {
     notes: notes.present ? notes.value : this.notes,
     isDone: isDone ?? this.isDone,
     dueDay: dueDay.present ? dueDay.value : this.dueDay,
-    position: position ?? this.position,
+    rank: rank ?? this.rank,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -659,7 +659,7 @@ class TasksData extends DataClass implements Insertable<TasksData> {
       notes: data.notes.present ? data.notes.value : this.notes,
       isDone: data.isDone.present ? data.isDone.value : this.isDone,
       dueDay: data.dueDay.present ? data.dueDay.value : this.dueDay,
-      position: data.position.present ? data.position.value : this.position,
+      rank: data.rank.present ? data.rank.value : this.rank,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -674,7 +674,7 @@ class TasksData extends DataClass implements Insertable<TasksData> {
           ..write('notes: $notes, ')
           ..write('isDone: $isDone, ')
           ..write('dueDay: $dueDay, ')
-          ..write('position: $position, ')
+          ..write('rank: $rank, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -689,7 +689,7 @@ class TasksData extends DataClass implements Insertable<TasksData> {
     notes,
     isDone,
     dueDay,
-    position,
+    rank,
     createdAt,
     updatedAt,
   );
@@ -703,7 +703,7 @@ class TasksData extends DataClass implements Insertable<TasksData> {
           other.notes == this.notes &&
           other.isDone == this.isDone &&
           other.dueDay == this.dueDay &&
-          other.position == this.position &&
+          other.rank == this.rank &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -715,7 +715,7 @@ class TasksCompanion extends UpdateCompanion<TasksData> {
   final Value<String?> notes;
   final Value<int> isDone;
   final Value<int?> dueDay;
-  final Value<int> position;
+  final Value<String> rank;
   final Value<String> createdAt;
   final Value<String> updatedAt;
   const TasksCompanion({
@@ -725,7 +725,7 @@ class TasksCompanion extends UpdateCompanion<TasksData> {
     this.notes = const Value.absent(),
     this.isDone = const Value.absent(),
     this.dueDay = const Value.absent(),
-    this.position = const Value.absent(),
+    this.rank = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -736,12 +736,12 @@ class TasksCompanion extends UpdateCompanion<TasksData> {
     this.notes = const Value.absent(),
     this.isDone = const Value.absent(),
     this.dueDay = const Value.absent(),
-    required int position,
+    required String rank,
     required String createdAt,
     required String updatedAt,
   }) : checklistId = Value(checklistId),
        title = Value(title),
-       position = Value(position),
+       rank = Value(rank),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<TasksData> custom({
@@ -751,7 +751,7 @@ class TasksCompanion extends UpdateCompanion<TasksData> {
     Expression<String>? notes,
     Expression<int>? isDone,
     Expression<int>? dueDay,
-    Expression<int>? position,
+    Expression<String>? rank,
     Expression<String>? createdAt,
     Expression<String>? updatedAt,
   }) {
@@ -762,7 +762,7 @@ class TasksCompanion extends UpdateCompanion<TasksData> {
       if (notes != null) 'notes': notes,
       if (isDone != null) 'is_done': isDone,
       if (dueDay != null) 'due_day': dueDay,
-      if (position != null) 'position': position,
+      if (rank != null) 'rank': rank,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -775,7 +775,7 @@ class TasksCompanion extends UpdateCompanion<TasksData> {
     Value<String?>? notes,
     Value<int>? isDone,
     Value<int?>? dueDay,
-    Value<int>? position,
+    Value<String>? rank,
     Value<String>? createdAt,
     Value<String>? updatedAt,
   }) {
@@ -786,7 +786,7 @@ class TasksCompanion extends UpdateCompanion<TasksData> {
       notes: notes ?? this.notes,
       isDone: isDone ?? this.isDone,
       dueDay: dueDay ?? this.dueDay,
-      position: position ?? this.position,
+      rank: rank ?? this.rank,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -813,8 +813,8 @@ class TasksCompanion extends UpdateCompanion<TasksData> {
     if (dueDay.present) {
       map['due_day'] = Variable<int>(dueDay.value);
     }
-    if (position.present) {
-      map['position'] = Variable<int>(position.value);
+    if (rank.present) {
+      map['rank'] = Variable<String>(rank.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<String>(createdAt.value);
@@ -834,7 +834,7 @@ class TasksCompanion extends UpdateCompanion<TasksData> {
           ..write('notes: $notes, ')
           ..write('isDone: $isDone, ')
           ..write('dueDay: $dueDay, ')
-          ..write('position: $position, ')
+          ..write('rank: $rank, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -881,11 +881,11 @@ class Subtasks extends Table with TableInfo<Subtasks, SubtasksData> {
     $customConstraints: 'NOT NULL DEFAULT 0 CHECK (is_done IN (0, 1))',
     defaultValue: const CustomExpression('0'),
   );
-  late final GeneratedColumn<int> position = GeneratedColumn<int>(
-    'position',
+  late final GeneratedColumn<String> rank = GeneratedColumn<String>(
+    'rank',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
     $customConstraints: 'NOT NULL',
   );
@@ -911,7 +911,7 @@ class Subtasks extends Table with TableInfo<Subtasks, SubtasksData> {
     taskId,
     title,
     isDone,
-    position,
+    rank,
     createdAt,
     updatedAt,
   ];
@@ -942,9 +942,9 @@ class Subtasks extends Table with TableInfo<Subtasks, SubtasksData> {
         DriftSqlType.int,
         data['${effectivePrefix}is_done'],
       )!,
-      position: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}position'],
+      rank: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rank'],
       )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -971,7 +971,7 @@ class SubtasksData extends DataClass implements Insertable<SubtasksData> {
   final int taskId;
   final String title;
   final int isDone;
-  final int position;
+  final String rank;
   final String createdAt;
   final String updatedAt;
   const SubtasksData({
@@ -979,7 +979,7 @@ class SubtasksData extends DataClass implements Insertable<SubtasksData> {
     required this.taskId,
     required this.title,
     required this.isDone,
-    required this.position,
+    required this.rank,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -990,7 +990,7 @@ class SubtasksData extends DataClass implements Insertable<SubtasksData> {
     map['task_id'] = Variable<int>(taskId);
     map['title'] = Variable<String>(title);
     map['is_done'] = Variable<int>(isDone);
-    map['position'] = Variable<int>(position);
+    map['rank'] = Variable<String>(rank);
     map['created_at'] = Variable<String>(createdAt);
     map['updated_at'] = Variable<String>(updatedAt);
     return map;
@@ -1002,7 +1002,7 @@ class SubtasksData extends DataClass implements Insertable<SubtasksData> {
       taskId: Value(taskId),
       title: Value(title),
       isDone: Value(isDone),
-      position: Value(position),
+      rank: Value(rank),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1018,7 +1018,7 @@ class SubtasksData extends DataClass implements Insertable<SubtasksData> {
       taskId: serializer.fromJson<int>(json['taskId']),
       title: serializer.fromJson<String>(json['title']),
       isDone: serializer.fromJson<int>(json['isDone']),
-      position: serializer.fromJson<int>(json['position']),
+      rank: serializer.fromJson<String>(json['rank']),
       createdAt: serializer.fromJson<String>(json['createdAt']),
       updatedAt: serializer.fromJson<String>(json['updatedAt']),
     );
@@ -1031,7 +1031,7 @@ class SubtasksData extends DataClass implements Insertable<SubtasksData> {
       'taskId': serializer.toJson<int>(taskId),
       'title': serializer.toJson<String>(title),
       'isDone': serializer.toJson<int>(isDone),
-      'position': serializer.toJson<int>(position),
+      'rank': serializer.toJson<String>(rank),
       'createdAt': serializer.toJson<String>(createdAt),
       'updatedAt': serializer.toJson<String>(updatedAt),
     };
@@ -1042,7 +1042,7 @@ class SubtasksData extends DataClass implements Insertable<SubtasksData> {
     int? taskId,
     String? title,
     int? isDone,
-    int? position,
+    String? rank,
     String? createdAt,
     String? updatedAt,
   }) => SubtasksData(
@@ -1050,7 +1050,7 @@ class SubtasksData extends DataClass implements Insertable<SubtasksData> {
     taskId: taskId ?? this.taskId,
     title: title ?? this.title,
     isDone: isDone ?? this.isDone,
-    position: position ?? this.position,
+    rank: rank ?? this.rank,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1060,7 +1060,7 @@ class SubtasksData extends DataClass implements Insertable<SubtasksData> {
       taskId: data.taskId.present ? data.taskId.value : this.taskId,
       title: data.title.present ? data.title.value : this.title,
       isDone: data.isDone.present ? data.isDone.value : this.isDone,
-      position: data.position.present ? data.position.value : this.position,
+      rank: data.rank.present ? data.rank.value : this.rank,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1073,7 +1073,7 @@ class SubtasksData extends DataClass implements Insertable<SubtasksData> {
           ..write('taskId: $taskId, ')
           ..write('title: $title, ')
           ..write('isDone: $isDone, ')
-          ..write('position: $position, ')
+          ..write('rank: $rank, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1082,7 +1082,7 @@ class SubtasksData extends DataClass implements Insertable<SubtasksData> {
 
   @override
   int get hashCode =>
-      Object.hash(id, taskId, title, isDone, position, createdAt, updatedAt);
+      Object.hash(id, taskId, title, isDone, rank, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1091,7 +1091,7 @@ class SubtasksData extends DataClass implements Insertable<SubtasksData> {
           other.taskId == this.taskId &&
           other.title == this.title &&
           other.isDone == this.isDone &&
-          other.position == this.position &&
+          other.rank == this.rank &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1101,7 +1101,7 @@ class SubtasksCompanion extends UpdateCompanion<SubtasksData> {
   final Value<int> taskId;
   final Value<String> title;
   final Value<int> isDone;
-  final Value<int> position;
+  final Value<String> rank;
   final Value<String> createdAt;
   final Value<String> updatedAt;
   const SubtasksCompanion({
@@ -1109,7 +1109,7 @@ class SubtasksCompanion extends UpdateCompanion<SubtasksData> {
     this.taskId = const Value.absent(),
     this.title = const Value.absent(),
     this.isDone = const Value.absent(),
-    this.position = const Value.absent(),
+    this.rank = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -1118,12 +1118,12 @@ class SubtasksCompanion extends UpdateCompanion<SubtasksData> {
     required int taskId,
     required String title,
     this.isDone = const Value.absent(),
-    required int position,
+    required String rank,
     required String createdAt,
     required String updatedAt,
   }) : taskId = Value(taskId),
        title = Value(title),
-       position = Value(position),
+       rank = Value(rank),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<SubtasksData> custom({
@@ -1131,7 +1131,7 @@ class SubtasksCompanion extends UpdateCompanion<SubtasksData> {
     Expression<int>? taskId,
     Expression<String>? title,
     Expression<int>? isDone,
-    Expression<int>? position,
+    Expression<String>? rank,
     Expression<String>? createdAt,
     Expression<String>? updatedAt,
   }) {
@@ -1140,7 +1140,7 @@ class SubtasksCompanion extends UpdateCompanion<SubtasksData> {
       if (taskId != null) 'task_id': taskId,
       if (title != null) 'title': title,
       if (isDone != null) 'is_done': isDone,
-      if (position != null) 'position': position,
+      if (rank != null) 'rank': rank,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -1151,7 +1151,7 @@ class SubtasksCompanion extends UpdateCompanion<SubtasksData> {
     Value<int>? taskId,
     Value<String>? title,
     Value<int>? isDone,
-    Value<int>? position,
+    Value<String>? rank,
     Value<String>? createdAt,
     Value<String>? updatedAt,
   }) {
@@ -1160,7 +1160,7 @@ class SubtasksCompanion extends UpdateCompanion<SubtasksData> {
       taskId: taskId ?? this.taskId,
       title: title ?? this.title,
       isDone: isDone ?? this.isDone,
-      position: position ?? this.position,
+      rank: rank ?? this.rank,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1181,8 +1181,8 @@ class SubtasksCompanion extends UpdateCompanion<SubtasksData> {
     if (isDone.present) {
       map['is_done'] = Variable<int>(isDone.value);
     }
-    if (position.present) {
-      map['position'] = Variable<int>(position.value);
+    if (rank.present) {
+      map['rank'] = Variable<String>(rank.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<String>(createdAt.value);
@@ -1200,7 +1200,7 @@ class SubtasksCompanion extends UpdateCompanion<SubtasksData> {
           ..write('taskId: $taskId, ')
           ..write('title: $title, ')
           ..write('isDone: $isDone, ')
-          ..write('position: $position, ')
+          ..write('rank: $rank, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1208,18 +1208,18 @@ class SubtasksCompanion extends UpdateCompanion<SubtasksData> {
   }
 }
 
-class DatabaseAtV1 extends GeneratedDatabase {
-  DatabaseAtV1(QueryExecutor e) : super(e);
+class DatabaseAtV2 extends GeneratedDatabase {
+  DatabaseAtV2(QueryExecutor e) : super(e);
   late final Checklists checklists = Checklists(this);
   late final Tasks tasks = Tasks(this);
   late final Subtasks subtasks = Subtasks(this);
   late final Index checklistActiveOrder = Index(
     'checklist_active_order',
-    'CREATE INDEX checklist_active_order ON checklists (archived_at, position)',
+    'CREATE INDEX checklist_active_order ON checklists (archived_at, rank)',
   );
   late final Index taskChecklistOrder = Index(
     'task_checklist_order',
-    'CREATE INDEX task_checklist_order ON tasks (checklist_id, position)',
+    'CREATE INDEX task_checklist_order ON tasks (checklist_id, rank)',
   );
   late final Index taskDue = Index(
     'task_due',
@@ -1227,7 +1227,7 @@ class DatabaseAtV1 extends GeneratedDatabase {
   );
   late final Index subtaskTaskOrder = Index(
     'subtask_task_order',
-    'CREATE INDEX subtask_task_order ON subtasks (task_id, position)',
+    'CREATE INDEX subtask_task_order ON subtasks (task_id, rank)',
   );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -1260,7 +1260,7 @@ class DatabaseAtV1 extends GeneratedDatabase {
     ),
   ]);
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
   @override
   DriftDatabaseOptions get options =>
       const DriftDatabaseOptions(storeDateTimeAsText: true);

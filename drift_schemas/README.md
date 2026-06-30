@@ -67,6 +67,29 @@ key, set in `build.yaml`). The matching schema-test fixtures live under `test/dr
    fixtures** together. CI's "verify committed generated code is current" runs **`build_runner`** only —
    it does *not* run `make-migrations`, so the snapshot/fixtures must be committed but aren't re-checked.
 
+## Column-type changes (the `alterTable` index trap)
+
+Changing a column's type or name needs `m.alterTable(TableMigration(schema.t))`, which rebuilds the
+table by copying columns **by name** from the old table into a new one. Two sharp edges:
+
+- **Drop the table's stale indexes that reference the changed column _before_ `alterTable`.** alterTable
+  re-creates every index it finds in `sqlite_master` by replaying that index's stored `CREATE INDEX` SQL
+  **verbatim** after the rebuild — so an index on the old column re-issues `CREATE INDEX … (old_col)`
+  against a table that no longer has it (`no such column`). Drop it first (`DROP INDEX IF EXISTS …`), then
+  create the new `(…, new_col)` index afterward via `m.createIndex(schema.theIndex)` (the generated
+  `Index` carries the right DDL). Indexes on _unchanged_ columns (e.g. `task_due`) replay fine — leave
+  them.
+- **A new NOT NULL column whose value is data-dependent can't be a `columnTransformer`** (that's pure
+  SQL). Add it nullable with a raw `ALTER TABLE … ADD COLUMN`, backfill in Dart via
+  `m.database.customSelect` / `customUpdate` — raw SQL **by column name**, because the typed accessors
+  reflect the _latest_ schema, which the table doesn't match mid-migration — then `alterTable` to finalize
+  (the now-populated column copies over to satisfy NOT NULL; the old column, absent from the target shape,
+  is dropped).
+
+For the data-integrity test: versioned companions store dates as **TEXT** (pass ISO strings, not
+`DateTime`), and `testWithDataIntegrity` disables foreign keys for the run — still seed FK-valid rows so
+the migration's own `PRAGMA foreign_key_check` stays clean.
+
 ## Re-capturing fixtures by hand (single schema version)
 
 At a **single** `schemaVersion`, `make-migrations` only **dumps the snapshot** — it generates no fixtures

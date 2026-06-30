@@ -18,12 +18,22 @@ mixin OptimisticReorder<T extends StatefulWidget> on State<T> {
     required int oldIndex,
     required int newIndex,
     required OptimisticOrder order,
-    required Future<Result<void>> Function(List<int> ids) persist,
+    required Future<Result<void>> Function(
+      int movedId,
+      int? beforeId,
+      int? afterId,
+    )
+    persist,
     required String errorMessage,
   }) async {
     final ids = reorderedIds(currentIds, oldIndex, newIndex);
     setState(() => order.apply(ids)); // show the new order this frame
-    final result = await persist(ids);
+    // The moved row and its new neighbours (null at a list end): the persist
+    // call re-ranks it to sit strictly between them, a single-row write.
+    final movedId = ids[newIndex];
+    final beforeId = newIndex > 0 ? ids[newIndex - 1] : null;
+    final afterId = newIndex < ids.length - 1 ? ids[newIndex + 1] : null;
+    final result = await persist(movedId, beforeId, afterId);
     if (!mounted) return;
     if (result case Err()) {
       setState(order.clear); // write failed — fall back to the stream's order

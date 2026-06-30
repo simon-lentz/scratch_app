@@ -13,21 +13,21 @@ class SubtaskDao extends DatabaseAccessor<AppDatabase>
   /// Binds the DAO to its attached database.
   SubtaskDao(super.attachedDatabase);
 
-  /// A task's subtasks ordered by `position` (id as a stable tiebreaker);
+  /// A task's subtasks ordered by `rank` (id as a stable tiebreaker);
   /// re-emits on any change.
   Stream<List<Subtask>> watchForTask(int taskId) {
     return (select(subtasks)
           ..where((s) => s.taskId.equals(taskId))
           ..orderBy([
-            (s) => OrderingTerm(expression: s.position),
+            (s) => OrderingTerm(expression: s.rank),
             (s) => OrderingTerm(expression: s.id),
           ]))
         .watch();
   }
 
-  /// Adds a subtask to the task at the next free position, then reconciles the
+  /// Adds a subtask to the task at the tail of its order, then reconciles the
   /// parent task's completion — a new open subtask reopens an auto-completed
-  /// parent (see [_reconcileParentDone]). Position allocation, insert, and
+  /// parent (see [_reconcileParentDone]). Rank allocation, insert, and
   /// reconcile run in one transaction, so they are atomic.
   Future<int> add(int taskId, String title) {
     return transaction(() async {
@@ -36,9 +36,9 @@ class SubtaskDao extends DatabaseAccessor<AppDatabase>
         SubtasksCompanion.insert(
           taskId: taskId,
           title: title,
-          position: await nextPosition(
+          rank: await nextRank(
             subtasks,
-            subtasks.position.max(),
+            subtasks.rank,
             where: subtasks.taskId.equals(taskId),
           ),
           createdAt: now,
@@ -92,17 +92,18 @@ class SubtaskDao extends DatabaseAccessor<AppDatabase>
     return deleted;
   });
 
-  /// Rewrites positions within a task to match the given id order.
-  ///
-  /// [orderedIds] must be the full set of subtask ids in [taskId].
-  Future<void> reorder(int taskId, List<int> orderedIds) => reorderByPosition(
-    subtasks,
-    orderedIds: orderedIds,
-    idColumn: subtasks.id,
-    rowFor: (index, now) =>
-        SubtasksCompanion(position: Value(index), updatedAt: Value(now)),
-    scope: subtasks.taskId.equals(taskId),
-  );
+  /// Re-ranks the moved subtask between its new neighbours (null = list end).
+  Future<void> reorder(int movedId, int? beforeId, int? afterId) =>
+      reorderByRank(
+        subtasks,
+        movedId: movedId,
+        beforeId: beforeId,
+        afterId: afterId,
+        idColumn: subtasks.id,
+        rankColumn: subtasks.rank,
+        rowFor: (rank, now) =>
+            SubtasksCompanion(rank: Value(rank), updatedAt: Value(now)),
+      );
 
   /// Reconciles [taskId]'s completion flag with its subtasks: with subtasks
   /// present, the task is done iff none are open; with no subtasks, completion

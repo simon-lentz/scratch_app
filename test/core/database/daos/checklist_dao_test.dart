@@ -1,5 +1,4 @@
 import 'package:checkplan/core/database/app_database.dart';
-import 'package:checkplan/core/database/dao_support.dart';
 import 'package:checkplan/core/database/daos/checklist_dao.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:drift/drift.dart' show Value;
@@ -46,7 +45,7 @@ void main() {
           TasksCompanion.insert(
             checklistId: id,
             title: 'a',
-            position: 0,
+            rank: 'a0',
             createdAt: now,
             updatedAt: now,
           ),
@@ -57,7 +56,7 @@ void main() {
           TasksCompanion.insert(
             checklistId: id,
             title: 'b',
-            position: 1,
+            rank: 'a1',
             createdAt: now,
             updatedAt: now,
             isDone: const Value(true),
@@ -76,11 +75,12 @@ void main() {
     expect(await dao.watchActiveSummaries().first, hasLength(1));
   });
 
-  test('reorder rewrites positions to match the given order', () async {
+  test('reorder moves a checklist to the head, before its old first', () async {
     final a = await dao.create('A');
-    final b = await dao.create('B');
+    await dao.create('B');
     final c = await dao.create('C');
-    await dao.reorder([c, a, b]);
+    // Move C to the front: nothing above it, A below it.
+    await dao.reorder(c, null, a);
 
     final titles = (await dao.watchActiveSummaries().first)
         .map((s) => s.checklist.title)
@@ -122,7 +122,7 @@ void main() {
           TasksCompanion.insert(
             checklistId: id,
             title: 'orphan?',
-            position: 0,
+            rank: 'a0',
             createdAt: now,
             updatedAt: now,
           ),
@@ -133,35 +133,19 @@ void main() {
     expect(await db.select(db.tasks).get(), isEmpty);
   });
 
-  test('reorder rejects a partial id set', () async {
-    final a = await dao.create('A');
-    await dao.create('B');
-    await dao.create('C');
-    // Omitting B and C would leave them colliding on stale positions.
-    await expectLater(dao.reorder([a]), throwsA(isA<ReorderConflict>()));
+  test('restore re-ranks to the active tail, not its stale rank', () async {
+    // gone ranks before keep at creation; archived then restored, it must
+    // re-rank to the tail so it sorts after keep, not back at the head.
+    final gone = await dao.create('gone');
+    await dao.create('keep');
+    await dao.archive(gone);
+    await dao.restore(gone);
+
+    final summaries = await dao.watchActiveSummaries().first;
+    expect(summaries.map((s) => s.checklist.title), ['keep', 'gone']);
+    final ranks = summaries.map((s) => s.checklist.rank).toList();
+    expect(ranks.toSet().length, summaries.length); // all ranks unique
   });
-
-  test(
-    'restore re-slots position so it cannot collide after a reorder',
-    () async {
-      final keep = await dao.create('keep'); // position 0
-      final gone = await dao.create('gone'); // position 1
-      await dao.archive(gone);
-      await dao.reorder([keep]); // keep -> 0; gone keeps stale 1 while archived
-      await dao.restore(gone); // must move to the tail, not tie keep at 0
-
-      final summaries = await dao.watchActiveSummaries().first;
-      final positions = summaries.map((s) => s.checklist.position).toList();
-      expect(
-        positions.toSet().length,
-        summaries.length,
-      ); // all positions unique
-      expect(
-        summaries.map((s) => s.checklist.title),
-        ['keep', 'gone'],
-      ); // deterministic order
-    },
-  );
 
   test('watchArchivedSummaries lists archived and excludes active', () async {
     await dao.create('Active');

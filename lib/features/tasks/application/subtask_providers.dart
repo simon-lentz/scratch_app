@@ -61,9 +61,9 @@ class SubtaskController extends _$SubtaskController {
         await _dao.rename(id, title);
       });
 
-  /// Rewrites subtask positions within [taskId] to match [orderedIds].
-  Future<Result<void>> reorder(int taskId, List<int> orderedIds) =>
+  /// Re-ranks the moved subtask between its new neighbours (null = list end).
+  Future<Result<void>> reorder(int movedId, int? beforeId, int? afterId) =>
       Result.guard(() async {
-        await _dao.reorder(taskId, orderedIds);
+        await _dao.reorder(movedId, beforeId, afterId);
       });
 }

@@ -81,5 +81,42 @@ void main() {
       expect(ranksBetween(null, null, 0), isEmpty);
       expect(ranksBetween('a0', 'a2', 1), [rankBetween('a0', 'a2')]);
     });
+
+    test('before a bound (a == null) is ascending and in range', () {
+      final keys = ranksBetween(null, 'a5', 3);
+      expect(keys, hasLength(3));
+      final sorted = [...keys]..sort();
+      expect(keys, sorted);
+      for (final k in keys) {
+        expect(k.compareTo('a5') < 0, isTrue);
+      }
+    });
+  });
+
+  group('rankBetween — edge branches', () {
+    test('rejects a malformed key: invalid head char', () {
+      expect(() => rankBetween('@', null), throwsArgumentError);
+    });
+
+    test('rejects a malformed key: trailing zero in the fraction', () {
+      expect(() => rankBetween('a00', null), throwsArgumentError);
+      expect(() => rankBetween(null, 'a00'), throwsArgumentError);
+    });
+
+    test('before-first decrements a bare integer key', () {
+      expect(rankBetween(null, 'a5'), 'a4');
+    });
+
+    test('before-first spans an integer-length decrease', () {
+      final k = rankBetween(null, 'b00');
+      expect(k.compareTo('b00') < 0, isTrue);
+      expect(rankBetween(null, k).compareTo(k) < 0, isTrue);
+    });
+
+    test('after-last spans an integer-length increase', () {
+      final k = rankBetween('Yzz', null);
+      expect(k.compareTo('Yzz') > 0, isTrue);
+      expect(rankBetween(k, null).compareTo(k) > 0, isTrue);
+    });
   });
 }

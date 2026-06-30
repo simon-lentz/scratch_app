@@ -19,7 +19,7 @@ Task _task(int id, String title, int dueDay) => Task(
   title: title,
   isDone: false,
   dueDay: EpochDay(dueDay),
-  position: id,
+  rank: 'a0',
   createdAt: _instant,
   updatedAt: _instant,
 );

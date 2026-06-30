@@ -62,9 +62,9 @@ class TaskController extends _$TaskController {
     await _dao.deleteById(id);
   });
 
-  /// Rewrites task positions within [checklistId] to match [orderedIds].
-  Future<Result<void>> reorder(int checklistId, List<int> orderedIds) =>
+  /// Re-ranks the moved task between its new neighbours (null = list end).
+  Future<Result<void>> reorder(int movedId, int? beforeId, int? afterId) =>
       Result.guard(() async {
-        await _dao.reorder(checklistId, orderedIds);
+        await _dao.reorder(movedId, beforeId, afterId);
       });
 }

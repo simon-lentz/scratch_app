@@ -27,8 +27,11 @@ class _FailingTaskController extends TaskController {
   @override
   Future<Result<void>> delete(int id) async => _boom();
   @override
-  Future<Result<void>> reorder(int checklistId, List<int> orderedIds) async =>
-      _boom();
+  Future<Result<void>> reorder(
+    int movedId,
+    int? beforeId,
+    int? afterId,
+  ) async => _boom();
 }
 
 /// Subtask commands all fail, to drive the inline subtask error feedback.
@@ -44,8 +47,11 @@ class _FailingSubtaskController extends SubtaskController {
   @override
   Future<Result<void>> rename(int id, String title) async => _boom();
   @override
-  Future<Result<void>> reorder(int taskId, List<int> orderedIds) async =>
-      _boom();
+  Future<Result<void>> reorder(
+    int movedId,
+    int? beforeId,
+    int? afterId,
+  ) async => _boom();
 }
 
 void main() {

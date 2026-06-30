@@ -1,4 +1,3 @@
-import 'package:checkplan/core/database/dao_support.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/result.dart';
 import 'package:checkplan/core/time/epoch_day.dart';
@@ -89,17 +88,9 @@ void main() {
     final list = await seedChecklist();
     final a = ((await controller().add(list, 'A')) as Ok<int>).value;
     final b = ((await controller().add(list, 'B')) as Ok<int>).value;
-    await controller().reorder(list, [b, a]);
+    // Move B before A: nothing above it, A below it.
+    await controller().reorder(b, null, a);
     expect(await titles(list), ['B', 'A']);
-  });
-
-  test('reorder with a stale id set returns Err(ReorderConflict)', () async {
-    final list = await seedChecklist();
-    final a = ((await controller().add(list, 'A')) as Ok<int>).value;
-    await controller().add(list, 'B'); // omitted from the set below
-    final result = await controller().reorder(list, [a]);
-    expect(result, isA<Err<void>>());
-    expect((result as Err<void>).error, isA<ReorderConflict>());
   });
 
   test('edit sets and then clears the due date', () async {

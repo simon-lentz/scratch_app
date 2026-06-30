@@ -6,7 +6,7 @@ import 'package:drift/drift.dart';
 /// DateTime values are stored as ISO-8601 text.
 ///
 /// Soft deleted via [archivedAt], hard-deleted with a cascade.
-@TableIndex(name: 'checklist_active_order', columns: {#archivedAt, #position})
+@TableIndex(name: 'checklist_active_order', columns: {#archivedAt, #rank})
 class Checklists extends Table {
   /// Surrogate PK.
   IntColumn get id => integer().autoIncrement()();
@@ -17,8 +17,9 @@ class Checklists extends Table {
   /// Optional theme color
   IntColumn get colorValue => integer().nullable()();
 
-  /// Sort order among active checklists, rewritten as a block on reorder.
-  IntColumn get position => integer()();
+  /// Fractional sort key among checklists; a reorder rewrites only the moved
+  /// row's key (see core/database/rank.dart).
+  TextColumn get rank => text()();
 
   /// Creation timestamp.
   DateTimeColumn get createdAt => dateTime()();

@@ -18,7 +18,7 @@ Checklist _checklist({int? colorValue}) => Checklist(
   id: 1,
   title: 'Groceries',
   colorValue: colorValue,
-  position: 1,
+  rank: 'a0',
   createdAt: _instant,
   updatedAt: _instant,
 );
@@ -29,7 +29,7 @@ Task _task({bool isDone = false, int? dueDay}) => Task(
   title: 'Apples',
   isDone: isDone,
   dueDay: dueDay == null ? null : EpochDay(dueDay),
-  position: 1,
+  rank: 'a0',
   createdAt: _instant,
   updatedAt: _instant,
 );

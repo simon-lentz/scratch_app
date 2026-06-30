@@ -75,10 +75,11 @@ class ChecklistController extends _$ChecklistController {
     await _dao.restore(id);
   });
 
-  /// Rewrites checklist positions to match [orderedIds].
-  Future<Result<void>> reorder(List<int> orderedIds) => Result.guard(() async {
-    await _dao.reorder(orderedIds);
-  });
+  /// Re-ranks the moved checklist between its new neighbours (null = list end).
+  Future<Result<void>> reorder(int movedId, int? beforeId, int? afterId) =>
+      Result.guard(() async {
+        await _dao.reorder(movedId, beforeId, afterId);
+      });
 
   /// Permanently deletes the checklist [id], cascading to its tasks.
   Future<Result<void>> delete(int id) => Result.guard(() async {
