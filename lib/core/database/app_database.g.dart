@@ -545,15 +545,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     ),
     defaultValue: const Constant(false),
   );
-  static const VerificationMeta _dueDayMeta = const VerificationMeta('dueDay');
   @override
-  late final GeneratedColumn<int> dueDay = GeneratedColumn<int>(
-    'due_day',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
+  late final GeneratedColumnWithTypeConverter<EpochDay?, int> dueDay =
+      GeneratedColumn<int>(
+        'due_day',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<EpochDay?>($TasksTable.$converterdueDayn);
   static const VerificationMeta _positionMeta = const VerificationMeta(
     'position',
   );
@@ -645,12 +645,6 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         isDone.isAcceptableOrUnknown(data['is_done']!, _isDoneMeta),
       );
     }
-    if (data.containsKey('due_day')) {
-      context.handle(
-        _dueDayMeta,
-        dueDay.isAcceptableOrUnknown(data['due_day']!, _dueDayMeta),
-      );
-    }
     if (data.containsKey('position')) {
       context.handle(
         _positionMeta,
@@ -704,9 +698,11 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_done'],
       )!,
-      dueDay: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}due_day'],
+      dueDay: $TasksTable.$converterdueDayn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}due_day'],
+        ),
       ),
       position: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -727,6 +723,11 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
   $TasksTable createAlias(String alias) {
     return $TasksTable(attachedDatabase, alias);
   }
+
+  static TypeConverter<EpochDay, int> $converterdueDay =
+      const EpochDayConverter();
+  static TypeConverter<EpochDay?, int?> $converterdueDayn =
+      NullAwareTypeConverter.wrap($converterdueDay);
 }
 
 class Task extends DataClass implements Insertable<Task> {
@@ -745,8 +746,8 @@ class Task extends DataClass implements Insertable<Task> {
   /// Task completion flag, defaults to false.
   final bool isDone;
 
-  /// Optional due date.
-  final int? dueDay;
+  /// Optional due date, stored as an epoch-day int and mapped to `EpochDay`.
+  final EpochDay? dueDay;
 
   /// Position of the task within its checklist.
   final int position;
@@ -778,7 +779,9 @@ class Task extends DataClass implements Insertable<Task> {
     }
     map['is_done'] = Variable<bool>(isDone);
     if (!nullToAbsent || dueDay != null) {
-      map['due_day'] = Variable<int>(dueDay);
+      map['due_day'] = Variable<int>(
+        $TasksTable.$converterdueDayn.toSql(dueDay),
+      );
     }
     map['position'] = Variable<int>(position);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -815,7 +818,7 @@ class Task extends DataClass implements Insertable<Task> {
       title: serializer.fromJson<String>(json['title']),
       notes: serializer.fromJson<String?>(json['notes']),
       isDone: serializer.fromJson<bool>(json['isDone']),
-      dueDay: serializer.fromJson<int?>(json['dueDay']),
+      dueDay: serializer.fromJson<EpochDay?>(json['dueDay']),
       position: serializer.fromJson<int>(json['position']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -830,7 +833,7 @@ class Task extends DataClass implements Insertable<Task> {
       'title': serializer.toJson<String>(title),
       'notes': serializer.toJson<String?>(notes),
       'isDone': serializer.toJson<bool>(isDone),
-      'dueDay': serializer.toJson<int?>(dueDay),
+      'dueDay': serializer.toJson<EpochDay?>(dueDay),
       'position': serializer.toJson<int>(position),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -843,7 +846,7 @@ class Task extends DataClass implements Insertable<Task> {
     String? title,
     Value<String?> notes = const Value.absent(),
     bool? isDone,
-    Value<int?> dueDay = const Value.absent(),
+    Value<EpochDay?> dueDay = const Value.absent(),
     int? position,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -923,7 +926,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<String> title;
   final Value<String?> notes;
   final Value<bool> isDone;
-  final Value<int?> dueDay;
+  final Value<EpochDay?> dueDay;
   final Value<int> position;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -983,7 +986,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<String>? title,
     Value<String?>? notes,
     Value<bool>? isDone,
-    Value<int?>? dueDay,
+    Value<EpochDay?>? dueDay,
     Value<int>? position,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -1020,7 +1023,9 @@ class TasksCompanion extends UpdateCompanion<Task> {
       map['is_done'] = Variable<bool>(isDone.value);
     }
     if (dueDay.present) {
-      map['due_day'] = Variable<int>(dueDay.value);
+      map['due_day'] = Variable<int>(
+        $TasksTable.$converterdueDayn.toSql(dueDay.value),
+      );
     }
     if (position.present) {
       map['position'] = Variable<int>(position.value);
@@ -1915,7 +1920,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       required String title,
       Value<String?> notes,
       Value<bool> isDone,
-      Value<int?> dueDay,
+      Value<EpochDay?> dueDay,
       required int position,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -1927,7 +1932,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<String> title,
       Value<String?> notes,
       Value<bool> isDone,
-      Value<int?> dueDay,
+      Value<EpochDay?> dueDay,
       Value<int> position,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -2002,10 +2007,11 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get dueDay => $composableBuilder(
-    column: $table.dueDay,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnWithTypeConverterFilters<EpochDay?, EpochDay, int> get dueDay =>
+      $composableBuilder(
+        column: $table.dueDay,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
   ColumnFilters<int> get position => $composableBuilder(
     column: $table.position,
@@ -2165,7 +2171,7 @@ class $$TasksTableAnnotationComposer
   GeneratedColumn<bool> get isDone =>
       $composableBuilder(column: $table.isDone, builder: (column) => column);
 
-  GeneratedColumn<int> get dueDay =>
+  GeneratedColumnWithTypeConverter<EpochDay?, int> get dueDay =>
       $composableBuilder(column: $table.dueDay, builder: (column) => column);
 
   GeneratedColumn<int> get position =>
@@ -2259,7 +2265,7 @@ class $$TasksTableTableManager
                 Value<String> title = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<bool> isDone = const Value.absent(),
-                Value<int?> dueDay = const Value.absent(),
+                Value<EpochDay?> dueDay = const Value.absent(),
                 Value<int> position = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -2281,7 +2287,7 @@ class $$TasksTableTableManager
                 required String title,
                 Value<String?> notes = const Value.absent(),
                 Value<bool> isDone = const Value.absent(),
-                Value<int?> dueDay = const Value.absent(),
+                Value<EpochDay?> dueDay = const Value.absent(),
                 required int position,
                 required DateTime createdAt,
                 required DateTime updatedAt,

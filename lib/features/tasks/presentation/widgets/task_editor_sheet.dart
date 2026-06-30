@@ -60,8 +60,7 @@ class _TaskEditorSheetState extends ConsumerState<_TaskEditorSheet> {
   @override
   void initState() {
     super.initState();
-    final due = widget.task.dueDay;
-    _dueDay = due == null ? null : EpochDay(due);
+    _dueDay = widget.task.dueDay;
   }
 
   @override

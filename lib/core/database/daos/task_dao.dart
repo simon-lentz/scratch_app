@@ -98,7 +98,7 @@ class TaskDao extends DatabaseAccessor<AppDatabase>
           subtaskProgress: readProgress(row),
         );
         // dueDay is non-null here (guarded by the WHERE above).
-        if (task.dueDay! < today.value) {
+        if (task.dueDay! < today) {
           overdue.add(entry);
         } else {
           dueToday.add(entry);
@@ -145,7 +145,7 @@ class TaskDao extends DatabaseAccessor<AppDatabase>
     TasksCompanion(
       title: Value(title),
       notes: Value(notes),
-      dueDay: Value(dueDay?.value),
+      dueDay: Value(dueDay),
       updatedAt: Value(DateTime.timestamp()),
     ),
   );
@@ -163,7 +163,7 @@ class TaskDao extends DatabaseAccessor<AppDatabase>
   Future<int> setDueDate(int id, EpochDay? dueDay) =>
       (update(tasks)..where((t) => t.id.equals(id))).write(
         TasksCompanion(
-          dueDay: Value(dueDay?.value),
+          dueDay: Value(dueDay),
           updatedAt: Value(DateTime.timestamp()),
         ),
       );

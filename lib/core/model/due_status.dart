@@ -38,16 +38,14 @@ final class Upcoming extends DueStatus {
   final EpochDay on;
 }
 
-/// Classifies a task's [dueDay] (the raw stored epoch-day, or null) against
-/// [today].
+/// Classifies a task's [dueDay] (an [EpochDay], or null) against [today].
 ///
 /// Because both are zero-based epoch-days, the comparison is exact integer
 /// arithmetic (no timezone or DST involved).
-DueStatus dueStatusFor(int? dueDay, EpochDay today) {
+DueStatus dueStatusFor(EpochDay? dueDay, EpochDay today) {
   if (dueDay == null) return const NoDueDate();
-  final due = EpochDay(dueDay);
-  if (due < today) return Overdue(today - due);
-  if (due > today) return Upcoming(due);
+  if (dueDay < today) return Overdue(today - dueDay);
+  if (dueDay > today) return Upcoming(dueDay);
   return const DueToday();
 }
 

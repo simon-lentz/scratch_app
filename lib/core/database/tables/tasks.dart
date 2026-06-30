@@ -1,3 +1,4 @@
+import 'package:checkplan/core/database/converters/epoch_day_converter.dart';
 import 'package:checkplan/core/database/tables/checklists.dart';
 import 'package:drift/drift.dart';
 
@@ -28,8 +29,8 @@ class Tasks extends Table {
   /// Task completion flag, defaults to false.
   BoolColumn get isDone => boolean().withDefault(const Constant(false))();
 
-  /// Optional due date.
-  IntColumn get dueDay => integer().nullable()();
+  /// Optional due date, stored as an epoch-day int and mapped to `EpochDay`.
+  IntColumn get dueDay => integer().nullable().map(const EpochDayConverter())();
 
   /// Position of the task within its checklist.
   IntColumn get position => integer()();

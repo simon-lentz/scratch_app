@@ -18,7 +18,7 @@ Task _task(int id, String title, int dueDay) => Task(
   checklistId: 1,
   title: title,
   isDone: false,
-  dueDay: dueDay,
+  dueDay: EpochDay(dueDay),
   position: id,
   createdAt: _instant,
   updatedAt: _instant,

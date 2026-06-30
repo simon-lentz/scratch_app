@@ -28,7 +28,7 @@ Task _task({bool isDone = false, int? dueDay}) => Task(
   checklistId: 1,
   title: 'Apples',
   isDone: isDone,
-  dueDay: dueDay,
+  dueDay: dueDay == null ? null : EpochDay(dueDay),
   position: 1,
   createdAt: _instant,
   updatedAt: _instant,

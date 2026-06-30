@@ -107,7 +107,7 @@ void main() {
     final id = ((await controller().add(list, 'Task')) as Ok<int>).value;
     final due = EpochDay.fromDateTime(DateTime(2026, 6, 18));
     await controller().edit(id, title: 'Task', dueDay: due);
-    expect((await onlyTask(list)).task.dueDay, due.value);
+    expect((await onlyTask(list)).task.dueDay, due);
     await controller().edit(id, title: 'Task', dueDay: null);
     expect((await onlyTask(list)).task.dueDay, isNull);
   });

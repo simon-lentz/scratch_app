@@ -1,9 +1,11 @@
+import 'package:checkplan/core/database/converters/epoch_day_converter.dart';
 import 'package:checkplan/core/database/daos/checklist_dao.dart';
 import 'package:checkplan/core/database/daos/subtask_dao.dart';
 import 'package:checkplan/core/database/daos/task_dao.dart';
 import 'package:checkplan/core/database/tables/checklists.dart';
 import 'package:checkplan/core/database/tables/subtasks.dart';
 import 'package:checkplan/core/database/tables/tasks.dart';
+import 'package:checkplan/core/time/epoch_day.dart';
 import 'package:drift/drift.dart';
 
 part 'app_database.g.dart';
