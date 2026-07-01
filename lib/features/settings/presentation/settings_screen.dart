@@ -1,11 +1,12 @@
 import 'package:checkplan/core/result.dart';
 import 'package:checkplan/core/widgets/error_snackbar.dart';
+import 'package:checkplan/features/account/presentation/account_section.dart';
 import 'package:checkplan/features/settings/application/settings_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// App settings — currently the theme-mode selector; later UI toggles and the
-/// account/sync section extend it.
+/// App settings — an account section and the theme-mode selector; later UI
+/// toggles extend it.
 class SettingsScreen extends ConsumerStatefulWidget {
   /// Creates the settings screen.
   const SettingsScreen({super.key});
@@ -32,6 +33,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
+          const AccountSection(),
+          const Divider(),
           ListTile(
             title: const Text('Theme'),
             subtitle: Padding(

@@ -1,5 +1,8 @@
 import 'package:checkplan/core/time/current_day.dart';
 import 'package:checkplan/core/widgets/empty_view.dart';
+import 'package:checkplan/features/account/presentation/password_reset_screen.dart';
+import 'package:checkplan/features/account/presentation/sign_in_screen.dart';
+import 'package:checkplan/features/account/presentation/sign_up_screen.dart';
 import 'package:checkplan/features/checklists/presentation/archived_checklists_screen.dart';
 import 'package:checkplan/features/checklists/presentation/checklists_screen.dart';
 import 'package:checkplan/features/settings/presentation/settings_screen.dart';
@@ -59,6 +62,18 @@ GoRouter createAppRouter({String initialLocation = '/'}) => GoRouter(
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: '/sign-in',
+      builder: (context, state) => const SignInScreen(),
+    ),
+    GoRoute(
+      path: '/sign-up',
+      builder: (context, state) => const SignUpScreen(),
+    ),
+    GoRoute(
+      path: '/reset-password',
+      builder: (context, state) => const PasswordResetScreen(),
     ),
   ],
 );
