@@ -32,6 +32,13 @@ void main() {
     await db.close();
   });
 
+  test('migrating v2 -> v3 produces the expected schema', () async {
+    final connection = await verifier.startAt(2);
+    final db = AppDatabase(connection);
+    await verifier.migrateAndValidate(db, 3);
+    await db.close();
+  });
+
   test("v1 -> v2 backfills rank from each scope's position order", () async {
     // A non-null ISO string: dates are stored as TEXT, and the migration copies
     // them through untouched, so the exact value is irrelevant.

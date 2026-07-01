@@ -31,6 +31,11 @@ class ChecklistsScreen extends ConsumerWidget {
             tooltip: 'Archived',
             onPressed: () => unawaited(context.push('/archived')),
           ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings',
+            onPressed: () => unawaited(context.push('/settings')),
+          ),
         ],
       ),
       body: AsyncSwitcher(

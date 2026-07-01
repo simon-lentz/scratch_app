@@ -2,6 +2,7 @@ import 'package:checkplan/core/time/current_day.dart';
 import 'package:checkplan/core/widgets/empty_view.dart';
 import 'package:checkplan/features/checklists/presentation/archived_checklists_screen.dart';
 import 'package:checkplan/features/checklists/presentation/checklists_screen.dart';
+import 'package:checkplan/features/settings/presentation/settings_screen.dart';
 import 'package:checkplan/features/tasks/presentation/checklist_detail_screen.dart';
 import 'package:checkplan/features/today/presentation/today_screen.dart';
 import 'package:flutter/material.dart';
@@ -54,6 +55,10 @@ GoRouter createAppRouter({String initialLocation = '/'}) => GoRouter(
           ],
         ),
       ],
+    ),
+    GoRoute(
+      path: '/settings',
+      builder: (context, state) => const SettingsScreen(),
     ),
   ],
 );

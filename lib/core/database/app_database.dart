@@ -1,10 +1,12 @@
 import 'package:checkplan/core/database/app_database.steps.dart';
 import 'package:checkplan/core/database/converters/epoch_day_converter.dart';
 import 'package:checkplan/core/database/daos/checklist_dao.dart';
+import 'package:checkplan/core/database/daos/settings_dao.dart';
 import 'package:checkplan/core/database/daos/subtask_dao.dart';
 import 'package:checkplan/core/database/daos/task_dao.dart';
 import 'package:checkplan/core/database/rank.dart';
 import 'package:checkplan/core/database/tables/checklists.dart';
+import 'package:checkplan/core/database/tables/settings.dart';
 import 'package:checkplan/core/database/tables/subtasks.dart';
 import 'package:checkplan/core/database/tables/tasks.dart';
 import 'package:checkplan/core/time/epoch_day.dart';
@@ -15,8 +17,8 @@ part 'app_database.g.dart';
 /// The single SQLite database for the app: owns the checklist, task, and
 /// subtask tables and enables foreign-key cascades on every connection.
 @DriftDatabase(
-  tables: [Checklists, Tasks, Subtasks],
-  daos: [ChecklistDao, TaskDao, SubtaskDao],
+  tables: [Checklists, Tasks, Subtasks, Settings],
+  daos: [ChecklistDao, TaskDao, SubtaskDao, SettingsDao],
 )
 class AppDatabase extends _$AppDatabase {
   /// Opens the database over the given executor (a native file in the app, an
@@ -24,7 +26,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   /// Schema migrations: see `drift_schemas/README.md`.
   @override
@@ -45,7 +47,7 @@ class AppDatabase extends _$AppDatabase {
         await m.runMigrationSteps(
           from: from,
           to: to,
-          steps: migrationSteps(from1To2: _from1To2),
+          steps: migrationSteps(from1To2: _from1To2, from2To3: _from2To3),
         );
         final violations = await customSelect('PRAGMA foreign_key_check').get();
         checkNoForeignKeyViolations(
@@ -92,6 +94,12 @@ class AppDatabase extends _$AppDatabase {
       newIndex: schema.subtaskTaskOrder,
       oldIndexName: 'subtask_task_order',
     );
+  }
+
+  // v2 -> v3: add the key-value settings table. Additive — no data to
+  // transform, so createTable is the whole step.
+  Future<void> _from2To3(Migrator m, Schema3 schema) async {
+    await m.createTable(schema.settings);
   }
 
   // Converts one table's `position` column to a backfilled `rank`. Order is
