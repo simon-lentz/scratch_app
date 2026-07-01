@@ -103,6 +103,7 @@ class SubtaskDao extends DatabaseAccessor<AppDatabase>
         rankColumn: subtasks.rank,
         rowFor: (rank, now) =>
             SubtasksCompanion(rank: Value(rank), updatedAt: Value(now)),
+        scopeOf: (moved) => subtasks.taskId.equals(moved.taskId),
       );
 
   /// Reconciles [taskId]'s completion flag with its subtasks: with subtasks

@@ -88,6 +88,61 @@ void main() {
     expect(titles, ['C', 'A', 'B']);
   });
 
+  test(
+    'reorder between equal-ranked neighbours rebalances and honors the drop',
+    () async {
+      // A rank collision is impossible single-device but expected once sync
+      // merges two devices that each appended the same deterministic key. Force
+      // B and C onto the same rank, then drag A into the gap rankBetween cannot
+      // split: the reorder must not throw, must honor the drop, and must leave
+      // every rank distinct again.
+      final a = await dao.create('A');
+      final b = await dao.create('B');
+      final c = await dao.create('C');
+      await (db.update(db.checklists)..where((t) => t.id.equals(b))).write(
+        const ChecklistsCompanion(rank: Value('a1')),
+      );
+      await (db.update(db.checklists)..where((t) => t.id.equals(c))).write(
+        const ChecklistsCompanion(rank: Value('a1')),
+      );
+      // By (rank, id) the active order is [A, B, C]; drop A between B and C.
+      await dao.reorder(a, b, c);
+
+      final summaries = await dao.watchActiveSummaries().first;
+      expect(summaries.map((s) => s.checklist.title), ['B', 'A', 'C']);
+      final ranks = summaries.map((s) => s.checklist.rank).toList();
+      expect(ranks.toSet().length, summaries.length); // all distinct again
+    },
+  );
+
+  test(
+    'rebalancing the active order leaves archived checklists untouched',
+    () async {
+      Future<String> rankOf(int id) async => (await (db.select(
+        db.checklists,
+      )..where((c) => c.id.equals(id))).getSingle()).rank;
+
+      final a = await dao.create('A');
+      final b = await dao.create('B');
+      final c = await dao.create('C');
+      final archived = await dao.create('Z');
+      await dao.archive(archived);
+      final archivedRankBefore = await rankOf(archived);
+
+      // Collide b and c, then drop a between them: the rebalance covers the
+      // active scope only, so the archived row's rank must not move.
+      await (db.update(db.checklists)..where((t) => t.id.equals(b))).write(
+        const ChecklistsCompanion(rank: Value('a1')),
+      );
+      await (db.update(db.checklists)..where((t) => t.id.equals(c))).write(
+        const ChecklistsCompanion(rank: Value('a1')),
+      );
+      await dao.reorder(a, b, c);
+
+      expect(await rankOf(archived), archivedRankBefore);
+    },
+  );
+
   test('setColor sets then clears the color', () async {
     final id = await dao.create('Palette');
 

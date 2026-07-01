@@ -31,27 +31,29 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) => m.createAll(),
     onUpgrade: (m, from, to) async {
-      // The foreign_keys pragma can't toggle inside a transaction, so disable
-      // it first, run the steps in one transaction (atomic across all three
-      // tables), verify nothing dangles, then re-enable.
+      // foreign_keys can't toggle inside a transaction, so disable it first,
+      // then run the steps and verify inside one transaction (atomic across all
+      // three tables). The verify runs in every build, not just debug: a
+      // migration that leaves a row referencing a missing parent is data
+      // corruption, so a violation throws and rolls the migration back —
+      // schemaVersion stays put and the next open retries from a clean v$from,
+      // rather than committing the corruption and bumping the version past it.
+      // `foreign_key_check` is a read, not a toggle, so it is safe in the
+      // transaction.
       await customStatement('PRAGMA foreign_keys = OFF');
-      await transaction(
-        () => m.runMigrationSteps(
+      await transaction(() async {
+        await m.runMigrationSteps(
           from: from,
           to: to,
           steps: migrationSteps(from1To2: _from1To2),
-        ),
-      );
-      // Run the FK check unconditionally (cheap, one-time on a small local DB);
-      // the assert is stripped in release. Deliberately avoids kDebugMode so
-      // this library stays Flutter-free and the drift schema-dump CLI keeps
-      // working without --export-schema-startup-code.
-      final violations = await customSelect('PRAGMA foreign_key_check').get();
-      assert(
-        violations.isEmpty,
-        'Foreign-key violations after v$from->v$to migration: '
-        '${violations.map((r) => r.data).toList()}',
-      );
+        );
+        final violations = await customSelect('PRAGMA foreign_key_check').get();
+        checkNoForeignKeyViolations(
+          violations.map((r) => r.data).toList(),
+          from,
+          to,
+        );
+      });
       await customStatement('PRAGMA foreign_keys = ON');
     },
     beforeOpen: (details) async {
@@ -119,6 +121,9 @@ class AppDatabase extends _$AppDatabase {
               'ORDER BY $scopeColumn, position';
     final rows = await db.customSelect(select).get();
 
+    // Compute each row's backfilled rank scope by scope, then write them all in
+    // one batched pass instead of a statement round-trip per row.
+    final backfill = <(int, String)>[];
     var i = 0;
     while (i < rows.length) {
       final scope = scopeColumn == null ? null : rows[i].read<int>('scope');
@@ -129,18 +134,39 @@ class AppDatabase extends _$AppDatabase {
       }
       final ranks = ranksBetween(null, null, j - i);
       for (var k = i; k < j; k++) {
-        await db.customUpdate(
-          'UPDATE $table SET rank = ? WHERE id = ?',
-          variables: [
-            Variable<String>(ranks[k - i]),
-            Variable<int>(rows[k].read<int>('id')),
-          ],
-        );
+        backfill.add((rows[k].read<int>('id'), ranks[k - i]));
       }
       i = j;
     }
+    await db.batch((b) {
+      for (final (id, rank) in backfill) {
+        b.customStatement('UPDATE $table SET rank = ? WHERE id = ?', [
+          rank,
+          id,
+        ]);
+      }
+    });
 
     await m.alterTable(TableMigration(target));
     await m.createIndex(newIndex);
   }
+}
+
+/// Throws a [StateError] naming the `v[from]->v[to]` migration if [violations]
+/// (the rows from `PRAGMA foreign_key_check`) is non-empty.
+///
+/// Runs in every build, not just debug: a migration that leaves a row
+/// referencing a missing parent is data corruption, so it must fail loudly —
+/// surfacing the offending rows — rather than ship silently. Kept Flutter-free
+/// (a plain `throw`, no `kDebugMode`) so the drift schema-dump CLI can run this
+/// library without Flutter bindings.
+void checkNoForeignKeyViolations(
+  List<Map<String, Object?>> violations,
+  int from,
+  int to,
+) {
+  if (violations.isEmpty) return;
+  throw StateError(
+    'Foreign-key violations after v$from->v$to migration: $violations',
+  );
 }

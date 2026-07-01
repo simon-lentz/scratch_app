@@ -122,4 +122,40 @@ void main() {
       },
     );
   });
+
+  test(
+    'a dangling foreign key fails the migration instead of shipping',
+    () async {
+      // A non-null ISO string for the migration to copy through.
+      const ts = '2026-01-01T00:00:00.000Z';
+      await expectLater(
+        verifier.testWithDataIntegrity(
+          oldVersion: 1,
+          newVersion: 2,
+          createOld: v1.DatabaseAtV1.new,
+          createNew: v2.DatabaseAtV2.new,
+          openTestedDatabase: AppDatabase.new,
+          // A task whose checklist_id references no checklist. The bare v1 test
+          // connection does not enforce foreign keys, so the row lands; the
+          // migration's post-step foreign_key_check must catch it and throw,
+          // rolling the migration back rather than persisting the corruption.
+          createItems: (batch, oldDb) {
+            batch.insert(
+              oldDb.tasks,
+              v1.TasksCompanion.insert(
+                id: const Value(1),
+                checklistId: 999,
+                title: 'orphan',
+                position: 0,
+                createdAt: ts,
+                updatedAt: ts,
+              ),
+            );
+          },
+          validateItems: (newDb) async {},
+        ),
+        throwsA(isA<StateError>()),
+      );
+    },
+  );
 }

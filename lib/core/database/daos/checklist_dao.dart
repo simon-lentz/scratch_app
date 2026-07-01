@@ -165,5 +165,8 @@ class ChecklistDao extends DatabaseAccessor<AppDatabase>
         rankColumn: checklists.rank,
         rowFor: (rank, now) =>
             ChecklistsCompanion(rank: Value(rank), updatedAt: Value(now)),
+        // The rank-ordered scope is the active set; archived rows order by
+        // archivedAt and aren't reordered, so a rebalance leaves them be.
+        scopeOf: (_) => checklists.archivedAt.isNull(),
       );
 }

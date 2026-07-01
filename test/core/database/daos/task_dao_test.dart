@@ -3,6 +3,7 @@ import 'package:checkplan/core/database/daos/checklist_dao.dart';
 import 'package:checkplan/core/database/daos/task_dao.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:checkplan/core/time/epoch_day.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -130,6 +131,40 @@ void main() {
         .toList();
     expect(titles, ['c', 'a', 'b']);
   });
+
+  test(
+    'reorder rebalances colliding ranks within the checklist scope only',
+    () async {
+      Future<List<String>> ranksOf(int checklistId) async =>
+          (await tasks.watchForChecklist(checklistId).first)
+              .map((view) => view.task.rank)
+              .toList();
+
+      final listA = await checklists.create('A');
+      final listB = await checklists.create('B');
+      final a1 = await tasks.add(listA, 'a1');
+      final a2 = await tasks.add(listA, 'a2');
+      final a3 = await tasks.add(listA, 'a3');
+      await tasks.add(listB, 'b1');
+      await tasks.add(listB, 'b2');
+      final ranksBeforeB = await ranksOf(listB);
+
+      // Collide a2 and a3 onto one rank, then drop a1 between them: the
+      // rebalance must re-key listA only, leaving listB's ranks untouched.
+      await (db.update(db.tasks)..where((t) => t.id.equals(a2))).write(
+        const TasksCompanion(rank: Value('a1')),
+      );
+      await (db.update(db.tasks)..where((t) => t.id.equals(a3))).write(
+        const TasksCompanion(rank: Value('a1')),
+      );
+      await tasks.reorder(a1, a2, a3);
+
+      final viewsA = await tasks.watchForChecklist(listA).first;
+      expect(viewsA.map((view) => view.task.title), ['a2', 'a1', 'a3']);
+      expect(viewsA.map((view) => view.task.rank).toSet(), hasLength(3));
+      expect(await ranksOf(listB), ranksBeforeB);
+    },
+  );
 
   test(
     'Today excludes tasks in archived checklists; restore brings them back',

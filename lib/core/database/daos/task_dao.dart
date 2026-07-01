@@ -183,5 +183,6 @@ class TaskDao extends DatabaseAccessor<AppDatabase>
         rankColumn: tasks.rank,
         rowFor: (rank, now) =>
             TasksCompanion(rank: Value(rank), updatedAt: Value(now)),
+        scopeOf: (moved) => tasks.checklistId.equals(moved.checklistId),
       );
 }
