@@ -1,6 +1,9 @@
 import 'package:checkplan/app/app.dart';
 import 'package:checkplan/core/database/database_providers.dart';
 import 'package:checkplan/core/observability/logging_provider_observer.dart';
+import 'package:checkplan/features/account/application/auth_providers.dart';
+import 'package:checkplan/features/account/application/auth_service.dart';
+import 'package:checkplan/features/account/application/supabase_auth_service.dart';
 import 'package:checkplan/features/settings/application/settings_providers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -8,10 +11,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // coverage:ignore-start
 Future<void> main() async {
-  // Touching the database resolves its on-disk path via platform channels
-  // (path_provider), so the engine must be bound before the read below —
-  // runApp would otherwise be the first to do this.
+  // Touching the database (and Supabase) resolves paths/keys via platform
+  // channels, so the engine must be bound before the reads below — runApp would
+  // otherwise be the first to do this.
   WidgetsFlutterBinding.ensureInitialized();
+
+  // The real Supabase client when the build is configured (--dart-define), else
+  // the local-only no-op so the app still runs and makes no network calls.
+  final authService = await _resolveAuthService();
 
   // Resolve the persisted theme before the first frame so an explicit
   // (non-system) mode is honored immediately, with no cold-start flash. The
@@ -20,7 +27,10 @@ Future<void> main() async {
   // second open.
   final container = ProviderContainer(
     observers: const [if (kDebugMode) LoggingProviderObserver()],
-    overrides: [appDatabaseOverride()],
+    overrides: [
+      appDatabaseOverride(),
+      authServiceProvider.overrideWithValue(authService),
+    ],
   );
   var initialThemeMode = ThemeMode.system;
   try {
@@ -39,6 +49,16 @@ Future<void> main() async {
       child: CheckPlanApp(initialThemeMode: initialThemeMode),
     ),
   );
+}
+
+/// The real [SupabaseAuthService] when `SUPABASE_URL` +
+/// `SUPABASE_PUBLISHABLE_KEY` are supplied via `--dart-define`; otherwise the
+/// local-only [SignedOutAuthService] (no Supabase init, no network).
+Future<AuthService> _resolveAuthService() async {
+  const url = String.fromEnvironment('SUPABASE_URL');
+  const key = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
+  if (url.isEmpty || key.isEmpty) return const SignedOutAuthService();
+  return SupabaseAuthService.initialize(url: url, publishableKey: key);
 }
 
 // coverage:ignore-end
