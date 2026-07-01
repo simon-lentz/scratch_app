@@ -46,15 +46,13 @@ class $ChecklistsTable extends Checklists
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _positionMeta = const VerificationMeta(
-    'position',
-  );
+  static const VerificationMeta _rankMeta = const VerificationMeta('rank');
   @override
-  late final GeneratedColumn<int> position = GeneratedColumn<int>(
-    'position',
+  late final GeneratedColumn<String> rank = GeneratedColumn<String>(
+    'rank',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
@@ -95,7 +93,7 @@ class $ChecklistsTable extends Checklists
     id,
     title,
     colorValue,
-    position,
+    rank,
     createdAt,
     updatedAt,
     archivedAt,
@@ -129,13 +127,13 @@ class $ChecklistsTable extends Checklists
         colorValue.isAcceptableOrUnknown(data['color_value']!, _colorValueMeta),
       );
     }
-    if (data.containsKey('position')) {
+    if (data.containsKey('rank')) {
       context.handle(
-        _positionMeta,
-        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+        _rankMeta,
+        rank.isAcceptableOrUnknown(data['rank']!, _rankMeta),
       );
     } else if (isInserting) {
-      context.missing(_positionMeta);
+      context.missing(_rankMeta);
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -180,9 +178,9 @@ class $ChecklistsTable extends Checklists
         DriftSqlType.int,
         data['${effectivePrefix}color_value'],
       ),
-      position: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}position'],
+      rank: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rank'],
       )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -215,8 +213,9 @@ class Checklist extends DataClass implements Insertable<Checklist> {
   /// Optional theme color
   final int? colorValue;
 
-  /// Sort order among active checklists, rewritten as a block on reorder.
-  final int position;
+  /// Fractional sort key among checklists; a reorder rewrites only the moved
+  /// row's key (see core/database/rank.dart).
+  final String rank;
 
   /// Creation timestamp.
   final DateTime createdAt;
@@ -230,7 +229,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
     required this.id,
     required this.title,
     this.colorValue,
-    required this.position,
+    required this.rank,
     required this.createdAt,
     required this.updatedAt,
     this.archivedAt,
@@ -243,7 +242,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
     if (!nullToAbsent || colorValue != null) {
       map['color_value'] = Variable<int>(colorValue);
     }
-    map['position'] = Variable<int>(position);
+    map['rank'] = Variable<String>(rank);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || archivedAt != null) {
@@ -259,7 +258,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
       colorValue: colorValue == null && nullToAbsent
           ? const Value.absent()
           : Value(colorValue),
-      position: Value(position),
+      rank: Value(rank),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       archivedAt: archivedAt == null && nullToAbsent
@@ -277,7 +276,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
       id: serializer.fromJson<int>(json['id']),
       title: serializer.fromJson<String>(json['title']),
       colorValue: serializer.fromJson<int?>(json['colorValue']),
-      position: serializer.fromJson<int>(json['position']),
+      rank: serializer.fromJson<String>(json['rank']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       archivedAt: serializer.fromJson<DateTime?>(json['archivedAt']),
@@ -290,7 +289,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
       'id': serializer.toJson<int>(id),
       'title': serializer.toJson<String>(title),
       'colorValue': serializer.toJson<int?>(colorValue),
-      'position': serializer.toJson<int>(position),
+      'rank': serializer.toJson<String>(rank),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'archivedAt': serializer.toJson<DateTime?>(archivedAt),
@@ -301,7 +300,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
     int? id,
     String? title,
     Value<int?> colorValue = const Value.absent(),
-    int? position,
+    String? rank,
     DateTime? createdAt,
     DateTime? updatedAt,
     Value<DateTime?> archivedAt = const Value.absent(),
@@ -309,7 +308,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
     id: id ?? this.id,
     title: title ?? this.title,
     colorValue: colorValue.present ? colorValue.value : this.colorValue,
-    position: position ?? this.position,
+    rank: rank ?? this.rank,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
@@ -321,7 +320,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
       colorValue: data.colorValue.present
           ? data.colorValue.value
           : this.colorValue,
-      position: data.position.present ? data.position.value : this.position,
+      rank: data.rank.present ? data.rank.value : this.rank,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       archivedAt: data.archivedAt.present
@@ -336,7 +335,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('colorValue: $colorValue, ')
-          ..write('position: $position, ')
+          ..write('rank: $rank, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('archivedAt: $archivedAt')
@@ -349,7 +348,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
     id,
     title,
     colorValue,
-    position,
+    rank,
     createdAt,
     updatedAt,
     archivedAt,
@@ -361,7 +360,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
           other.id == this.id &&
           other.title == this.title &&
           other.colorValue == this.colorValue &&
-          other.position == this.position &&
+          other.rank == this.rank &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.archivedAt == this.archivedAt);
@@ -371,7 +370,7 @@ class ChecklistsCompanion extends UpdateCompanion<Checklist> {
   final Value<int> id;
   final Value<String> title;
   final Value<int?> colorValue;
-  final Value<int> position;
+  final Value<String> rank;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> archivedAt;
@@ -379,7 +378,7 @@ class ChecklistsCompanion extends UpdateCompanion<Checklist> {
     this.id = const Value.absent(),
     this.title = const Value.absent(),
     this.colorValue = const Value.absent(),
-    this.position = const Value.absent(),
+    this.rank = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.archivedAt = const Value.absent(),
@@ -388,19 +387,19 @@ class ChecklistsCompanion extends UpdateCompanion<Checklist> {
     this.id = const Value.absent(),
     required String title,
     this.colorValue = const Value.absent(),
-    required int position,
+    required String rank,
     required DateTime createdAt,
     required DateTime updatedAt,
     this.archivedAt = const Value.absent(),
   }) : title = Value(title),
-       position = Value(position),
+       rank = Value(rank),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<Checklist> custom({
     Expression<int>? id,
     Expression<String>? title,
     Expression<int>? colorValue,
-    Expression<int>? position,
+    Expression<String>? rank,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? archivedAt,
@@ -409,7 +408,7 @@ class ChecklistsCompanion extends UpdateCompanion<Checklist> {
       if (id != null) 'id': id,
       if (title != null) 'title': title,
       if (colorValue != null) 'color_value': colorValue,
-      if (position != null) 'position': position,
+      if (rank != null) 'rank': rank,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (archivedAt != null) 'archived_at': archivedAt,
@@ -420,7 +419,7 @@ class ChecklistsCompanion extends UpdateCompanion<Checklist> {
     Value<int>? id,
     Value<String>? title,
     Value<int?>? colorValue,
-    Value<int>? position,
+    Value<String>? rank,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<DateTime?>? archivedAt,
@@ -429,7 +428,7 @@ class ChecklistsCompanion extends UpdateCompanion<Checklist> {
       id: id ?? this.id,
       title: title ?? this.title,
       colorValue: colorValue ?? this.colorValue,
-      position: position ?? this.position,
+      rank: rank ?? this.rank,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       archivedAt: archivedAt ?? this.archivedAt,
@@ -448,8 +447,8 @@ class ChecklistsCompanion extends UpdateCompanion<Checklist> {
     if (colorValue.present) {
       map['color_value'] = Variable<int>(colorValue.value);
     }
-    if (position.present) {
-      map['position'] = Variable<int>(position.value);
+    if (rank.present) {
+      map['rank'] = Variable<String>(rank.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -469,7 +468,7 @@ class ChecklistsCompanion extends UpdateCompanion<Checklist> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('colorValue: $colorValue, ')
-          ..write('position: $position, ')
+          ..write('rank: $rank, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('archivedAt: $archivedAt')
@@ -545,24 +544,22 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     ),
     defaultValue: const Constant(false),
   );
-  static const VerificationMeta _dueDayMeta = const VerificationMeta('dueDay');
   @override
-  late final GeneratedColumn<int> dueDay = GeneratedColumn<int>(
-    'due_day',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _positionMeta = const VerificationMeta(
-    'position',
-  );
+  late final GeneratedColumnWithTypeConverter<EpochDay?, int> dueDay =
+      GeneratedColumn<int>(
+        'due_day',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<EpochDay?>($TasksTable.$converterdueDayn);
+  static const VerificationMeta _rankMeta = const VerificationMeta('rank');
   @override
-  late final GeneratedColumn<int> position = GeneratedColumn<int>(
-    'position',
+  late final GeneratedColumn<String> rank = GeneratedColumn<String>(
+    'rank',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
@@ -595,7 +592,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     notes,
     isDone,
     dueDay,
-    position,
+    rank,
     createdAt,
     updatedAt,
   ];
@@ -645,19 +642,13 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         isDone.isAcceptableOrUnknown(data['is_done']!, _isDoneMeta),
       );
     }
-    if (data.containsKey('due_day')) {
+    if (data.containsKey('rank')) {
       context.handle(
-        _dueDayMeta,
-        dueDay.isAcceptableOrUnknown(data['due_day']!, _dueDayMeta),
-      );
-    }
-    if (data.containsKey('position')) {
-      context.handle(
-        _positionMeta,
-        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+        _rankMeta,
+        rank.isAcceptableOrUnknown(data['rank']!, _rankMeta),
       );
     } else if (isInserting) {
-      context.missing(_positionMeta);
+      context.missing(_rankMeta);
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -704,13 +695,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_done'],
       )!,
-      dueDay: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}due_day'],
+      dueDay: $TasksTable.$converterdueDayn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}due_day'],
+        ),
       ),
-      position: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}position'],
+      rank: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rank'],
       )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -727,6 +720,11 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
   $TasksTable createAlias(String alias) {
     return $TasksTable(attachedDatabase, alias);
   }
+
+  static TypeConverter<EpochDay, int> $converterdueDay =
+      const EpochDayConverter();
+  static TypeConverter<EpochDay?, int?> $converterdueDayn =
+      NullAwareTypeConverter.wrap($converterdueDay);
 }
 
 class Task extends DataClass implements Insertable<Task> {
@@ -745,11 +743,11 @@ class Task extends DataClass implements Insertable<Task> {
   /// Task completion flag, defaults to false.
   final bool isDone;
 
-  /// Optional due date.
-  final int? dueDay;
+  /// Optional due date, stored as an epoch-day int and mapped to `EpochDay`.
+  final EpochDay? dueDay;
 
-  /// Position of the task within its checklist.
-  final int position;
+  /// Fractional sort key within the checklist (see core/database/rank.dart).
+  final String rank;
 
   /// Creation timestamp.
   final DateTime createdAt;
@@ -763,7 +761,7 @@ class Task extends DataClass implements Insertable<Task> {
     this.notes,
     required this.isDone,
     this.dueDay,
-    required this.position,
+    required this.rank,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -778,9 +776,11 @@ class Task extends DataClass implements Insertable<Task> {
     }
     map['is_done'] = Variable<bool>(isDone);
     if (!nullToAbsent || dueDay != null) {
-      map['due_day'] = Variable<int>(dueDay);
+      map['due_day'] = Variable<int>(
+        $TasksTable.$converterdueDayn.toSql(dueDay),
+      );
     }
-    map['position'] = Variable<int>(position);
+    map['rank'] = Variable<String>(rank);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -798,7 +798,7 @@ class Task extends DataClass implements Insertable<Task> {
       dueDay: dueDay == null && nullToAbsent
           ? const Value.absent()
           : Value(dueDay),
-      position: Value(position),
+      rank: Value(rank),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -815,8 +815,8 @@ class Task extends DataClass implements Insertable<Task> {
       title: serializer.fromJson<String>(json['title']),
       notes: serializer.fromJson<String?>(json['notes']),
       isDone: serializer.fromJson<bool>(json['isDone']),
-      dueDay: serializer.fromJson<int?>(json['dueDay']),
-      position: serializer.fromJson<int>(json['position']),
+      dueDay: serializer.fromJson<EpochDay?>(json['dueDay']),
+      rank: serializer.fromJson<String>(json['rank']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -830,8 +830,8 @@ class Task extends DataClass implements Insertable<Task> {
       'title': serializer.toJson<String>(title),
       'notes': serializer.toJson<String?>(notes),
       'isDone': serializer.toJson<bool>(isDone),
-      'dueDay': serializer.toJson<int?>(dueDay),
-      'position': serializer.toJson<int>(position),
+      'dueDay': serializer.toJson<EpochDay?>(dueDay),
+      'rank': serializer.toJson<String>(rank),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -843,8 +843,8 @@ class Task extends DataClass implements Insertable<Task> {
     String? title,
     Value<String?> notes = const Value.absent(),
     bool? isDone,
-    Value<int?> dueDay = const Value.absent(),
-    int? position,
+    Value<EpochDay?> dueDay = const Value.absent(),
+    String? rank,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Task(
@@ -854,7 +854,7 @@ class Task extends DataClass implements Insertable<Task> {
     notes: notes.present ? notes.value : this.notes,
     isDone: isDone ?? this.isDone,
     dueDay: dueDay.present ? dueDay.value : this.dueDay,
-    position: position ?? this.position,
+    rank: rank ?? this.rank,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -868,7 +868,7 @@ class Task extends DataClass implements Insertable<Task> {
       notes: data.notes.present ? data.notes.value : this.notes,
       isDone: data.isDone.present ? data.isDone.value : this.isDone,
       dueDay: data.dueDay.present ? data.dueDay.value : this.dueDay,
-      position: data.position.present ? data.position.value : this.position,
+      rank: data.rank.present ? data.rank.value : this.rank,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -883,7 +883,7 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('notes: $notes, ')
           ..write('isDone: $isDone, ')
           ..write('dueDay: $dueDay, ')
-          ..write('position: $position, ')
+          ..write('rank: $rank, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -898,7 +898,7 @@ class Task extends DataClass implements Insertable<Task> {
     notes,
     isDone,
     dueDay,
-    position,
+    rank,
     createdAt,
     updatedAt,
   );
@@ -912,7 +912,7 @@ class Task extends DataClass implements Insertable<Task> {
           other.notes == this.notes &&
           other.isDone == this.isDone &&
           other.dueDay == this.dueDay &&
-          other.position == this.position &&
+          other.rank == this.rank &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -923,8 +923,8 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<String> title;
   final Value<String?> notes;
   final Value<bool> isDone;
-  final Value<int?> dueDay;
-  final Value<int> position;
+  final Value<EpochDay?> dueDay;
+  final Value<String> rank;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const TasksCompanion({
@@ -934,7 +934,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.notes = const Value.absent(),
     this.isDone = const Value.absent(),
     this.dueDay = const Value.absent(),
-    this.position = const Value.absent(),
+    this.rank = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -945,12 +945,12 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.notes = const Value.absent(),
     this.isDone = const Value.absent(),
     this.dueDay = const Value.absent(),
-    required int position,
+    required String rank,
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : checklistId = Value(checklistId),
        title = Value(title),
-       position = Value(position),
+       rank = Value(rank),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<Task> custom({
@@ -960,7 +960,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<String>? notes,
     Expression<bool>? isDone,
     Expression<int>? dueDay,
-    Expression<int>? position,
+    Expression<String>? rank,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -971,7 +971,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (notes != null) 'notes': notes,
       if (isDone != null) 'is_done': isDone,
       if (dueDay != null) 'due_day': dueDay,
-      if (position != null) 'position': position,
+      if (rank != null) 'rank': rank,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -983,8 +983,8 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<String>? title,
     Value<String?>? notes,
     Value<bool>? isDone,
-    Value<int?>? dueDay,
-    Value<int>? position,
+    Value<EpochDay?>? dueDay,
+    Value<String>? rank,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -995,7 +995,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       notes: notes ?? this.notes,
       isDone: isDone ?? this.isDone,
       dueDay: dueDay ?? this.dueDay,
-      position: position ?? this.position,
+      rank: rank ?? this.rank,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1020,10 +1020,12 @@ class TasksCompanion extends UpdateCompanion<Task> {
       map['is_done'] = Variable<bool>(isDone.value);
     }
     if (dueDay.present) {
-      map['due_day'] = Variable<int>(dueDay.value);
+      map['due_day'] = Variable<int>(
+        $TasksTable.$converterdueDayn.toSql(dueDay.value),
+      );
     }
-    if (position.present) {
-      map['position'] = Variable<int>(position.value);
+    if (rank.present) {
+      map['rank'] = Variable<String>(rank.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -1043,7 +1045,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('notes: $notes, ')
           ..write('isDone: $isDone, ')
           ..write('dueDay: $dueDay, ')
-          ..write('position: $position, ')
+          ..write('rank: $rank, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1107,15 +1109,13 @@ class $SubtasksTable extends Subtasks with TableInfo<$SubtasksTable, Subtask> {
     ),
     defaultValue: const Constant(false),
   );
-  static const VerificationMeta _positionMeta = const VerificationMeta(
-    'position',
-  );
+  static const VerificationMeta _rankMeta = const VerificationMeta('rank');
   @override
-  late final GeneratedColumn<int> position = GeneratedColumn<int>(
-    'position',
+  late final GeneratedColumn<String> rank = GeneratedColumn<String>(
+    'rank',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
@@ -1146,7 +1146,7 @@ class $SubtasksTable extends Subtasks with TableInfo<$SubtasksTable, Subtask> {
     taskId,
     title,
     isDone,
-    position,
+    rank,
     createdAt,
     updatedAt,
   ];
@@ -1187,13 +1187,13 @@ class $SubtasksTable extends Subtasks with TableInfo<$SubtasksTable, Subtask> {
         isDone.isAcceptableOrUnknown(data['is_done']!, _isDoneMeta),
       );
     }
-    if (data.containsKey('position')) {
+    if (data.containsKey('rank')) {
       context.handle(
-        _positionMeta,
-        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+        _rankMeta,
+        rank.isAcceptableOrUnknown(data['rank']!, _rankMeta),
       );
     } else if (isInserting) {
-      context.missing(_positionMeta);
+      context.missing(_rankMeta);
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -1236,9 +1236,9 @@ class $SubtasksTable extends Subtasks with TableInfo<$SubtasksTable, Subtask> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_done'],
       )!,
-      position: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}position'],
+      rank: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rank'],
       )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -1270,8 +1270,8 @@ class Subtask extends DataClass implements Insertable<Subtask> {
   /// Subtask completion flag, defaults to false.
   final bool isDone;
 
-  /// Sort order within the owning task.
-  final int position;
+  /// Fractional sort key within the owning task (see core/database/rank.dart).
+  final String rank;
 
   /// Creation timestamp.
   final DateTime createdAt;
@@ -1283,7 +1283,7 @@ class Subtask extends DataClass implements Insertable<Subtask> {
     required this.taskId,
     required this.title,
     required this.isDone,
-    required this.position,
+    required this.rank,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1294,7 +1294,7 @@ class Subtask extends DataClass implements Insertable<Subtask> {
     map['task_id'] = Variable<int>(taskId);
     map['title'] = Variable<String>(title);
     map['is_done'] = Variable<bool>(isDone);
-    map['position'] = Variable<int>(position);
+    map['rank'] = Variable<String>(rank);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1306,7 +1306,7 @@ class Subtask extends DataClass implements Insertable<Subtask> {
       taskId: Value(taskId),
       title: Value(title),
       isDone: Value(isDone),
-      position: Value(position),
+      rank: Value(rank),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1322,7 +1322,7 @@ class Subtask extends DataClass implements Insertable<Subtask> {
       taskId: serializer.fromJson<int>(json['taskId']),
       title: serializer.fromJson<String>(json['title']),
       isDone: serializer.fromJson<bool>(json['isDone']),
-      position: serializer.fromJson<int>(json['position']),
+      rank: serializer.fromJson<String>(json['rank']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1335,7 +1335,7 @@ class Subtask extends DataClass implements Insertable<Subtask> {
       'taskId': serializer.toJson<int>(taskId),
       'title': serializer.toJson<String>(title),
       'isDone': serializer.toJson<bool>(isDone),
-      'position': serializer.toJson<int>(position),
+      'rank': serializer.toJson<String>(rank),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1346,7 +1346,7 @@ class Subtask extends DataClass implements Insertable<Subtask> {
     int? taskId,
     String? title,
     bool? isDone,
-    int? position,
+    String? rank,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Subtask(
@@ -1354,7 +1354,7 @@ class Subtask extends DataClass implements Insertable<Subtask> {
     taskId: taskId ?? this.taskId,
     title: title ?? this.title,
     isDone: isDone ?? this.isDone,
-    position: position ?? this.position,
+    rank: rank ?? this.rank,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1364,7 +1364,7 @@ class Subtask extends DataClass implements Insertable<Subtask> {
       taskId: data.taskId.present ? data.taskId.value : this.taskId,
       title: data.title.present ? data.title.value : this.title,
       isDone: data.isDone.present ? data.isDone.value : this.isDone,
-      position: data.position.present ? data.position.value : this.position,
+      rank: data.rank.present ? data.rank.value : this.rank,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1377,7 +1377,7 @@ class Subtask extends DataClass implements Insertable<Subtask> {
           ..write('taskId: $taskId, ')
           ..write('title: $title, ')
           ..write('isDone: $isDone, ')
-          ..write('position: $position, ')
+          ..write('rank: $rank, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1386,7 +1386,7 @@ class Subtask extends DataClass implements Insertable<Subtask> {
 
   @override
   int get hashCode =>
-      Object.hash(id, taskId, title, isDone, position, createdAt, updatedAt);
+      Object.hash(id, taskId, title, isDone, rank, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1395,7 +1395,7 @@ class Subtask extends DataClass implements Insertable<Subtask> {
           other.taskId == this.taskId &&
           other.title == this.title &&
           other.isDone == this.isDone &&
-          other.position == this.position &&
+          other.rank == this.rank &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1405,7 +1405,7 @@ class SubtasksCompanion extends UpdateCompanion<Subtask> {
   final Value<int> taskId;
   final Value<String> title;
   final Value<bool> isDone;
-  final Value<int> position;
+  final Value<String> rank;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const SubtasksCompanion({
@@ -1413,7 +1413,7 @@ class SubtasksCompanion extends UpdateCompanion<Subtask> {
     this.taskId = const Value.absent(),
     this.title = const Value.absent(),
     this.isDone = const Value.absent(),
-    this.position = const Value.absent(),
+    this.rank = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -1422,12 +1422,12 @@ class SubtasksCompanion extends UpdateCompanion<Subtask> {
     required int taskId,
     required String title,
     this.isDone = const Value.absent(),
-    required int position,
+    required String rank,
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : taskId = Value(taskId),
        title = Value(title),
-       position = Value(position),
+       rank = Value(rank),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<Subtask> custom({
@@ -1435,7 +1435,7 @@ class SubtasksCompanion extends UpdateCompanion<Subtask> {
     Expression<int>? taskId,
     Expression<String>? title,
     Expression<bool>? isDone,
-    Expression<int>? position,
+    Expression<String>? rank,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -1444,7 +1444,7 @@ class SubtasksCompanion extends UpdateCompanion<Subtask> {
       if (taskId != null) 'task_id': taskId,
       if (title != null) 'title': title,
       if (isDone != null) 'is_done': isDone,
-      if (position != null) 'position': position,
+      if (rank != null) 'rank': rank,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -1455,7 +1455,7 @@ class SubtasksCompanion extends UpdateCompanion<Subtask> {
     Value<int>? taskId,
     Value<String>? title,
     Value<bool>? isDone,
-    Value<int>? position,
+    Value<String>? rank,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -1464,7 +1464,7 @@ class SubtasksCompanion extends UpdateCompanion<Subtask> {
       taskId: taskId ?? this.taskId,
       title: title ?? this.title,
       isDone: isDone ?? this.isDone,
-      position: position ?? this.position,
+      rank: rank ?? this.rank,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1485,8 +1485,8 @@ class SubtasksCompanion extends UpdateCompanion<Subtask> {
     if (isDone.present) {
       map['is_done'] = Variable<bool>(isDone.value);
     }
-    if (position.present) {
-      map['position'] = Variable<int>(position.value);
+    if (rank.present) {
+      map['rank'] = Variable<String>(rank.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -1504,7 +1504,7 @@ class SubtasksCompanion extends UpdateCompanion<Subtask> {
           ..write('taskId: $taskId, ')
           ..write('title: $title, ')
           ..write('isDone: $isDone, ')
-          ..write('position: $position, ')
+          ..write('rank: $rank, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1520,11 +1520,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SubtasksTable subtasks = $SubtasksTable(this);
   late final Index checklistActiveOrder = Index(
     'checklist_active_order',
-    'CREATE INDEX checklist_active_order ON checklists (archived_at, position)',
+    'CREATE INDEX checklist_active_order ON checklists (archived_at, rank)',
   );
   late final Index taskChecklistOrder = Index(
     'task_checklist_order',
-    'CREATE INDEX task_checklist_order ON tasks (checklist_id, position)',
+    'CREATE INDEX task_checklist_order ON tasks (checklist_id, rank)',
   );
   late final Index taskDue = Index(
     'task_due',
@@ -1532,7 +1532,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final Index subtaskTaskOrder = Index(
     'subtask_task_order',
-    'CREATE INDEX subtask_task_order ON subtasks (task_id, position)',
+    'CREATE INDEX subtask_task_order ON subtasks (task_id, rank)',
   );
   late final ChecklistDao checklistDao = ChecklistDao(this as AppDatabase);
   late final TaskDao taskDao = TaskDao(this as AppDatabase);
@@ -1577,7 +1577,7 @@ typedef $$ChecklistsTableCreateCompanionBuilder =
       Value<int> id,
       required String title,
       Value<int?> colorValue,
-      required int position,
+      required String rank,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<DateTime?> archivedAt,
@@ -1587,7 +1587,7 @@ typedef $$ChecklistsTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> title,
       Value<int?> colorValue,
-      Value<int> position,
+      Value<String> rank,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<DateTime?> archivedAt,
@@ -1641,8 +1641,8 @@ class $$ChecklistsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get position => $composableBuilder(
-    column: $table.position,
+  ColumnFilters<String> get rank => $composableBuilder(
+    column: $table.rank,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1711,8 +1711,8 @@ class $$ChecklistsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get position => $composableBuilder(
-    column: $table.position,
+  ColumnOrderings<String> get rank => $composableBuilder(
+    column: $table.rank,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -1752,8 +1752,8 @@ class $$ChecklistsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get position =>
-      $composableBuilder(column: $table.position, builder: (column) => column);
+  GeneratedColumn<String> get rank =>
+      $composableBuilder(column: $table.rank, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -1823,7 +1823,7 @@ class $$ChecklistsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<int?> colorValue = const Value.absent(),
-                Value<int> position = const Value.absent(),
+                Value<String> rank = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime?> archivedAt = const Value.absent(),
@@ -1831,7 +1831,7 @@ class $$ChecklistsTableTableManager
                 id: id,
                 title: title,
                 colorValue: colorValue,
-                position: position,
+                rank: rank,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 archivedAt: archivedAt,
@@ -1841,7 +1841,7 @@ class $$ChecklistsTableTableManager
                 Value<int> id = const Value.absent(),
                 required String title,
                 Value<int?> colorValue = const Value.absent(),
-                required int position,
+                required String rank,
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<DateTime?> archivedAt = const Value.absent(),
@@ -1849,7 +1849,7 @@ class $$ChecklistsTableTableManager
                 id: id,
                 title: title,
                 colorValue: colorValue,
-                position: position,
+                rank: rank,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 archivedAt: archivedAt,
@@ -1915,8 +1915,8 @@ typedef $$TasksTableCreateCompanionBuilder =
       required String title,
       Value<String?> notes,
       Value<bool> isDone,
-      Value<int?> dueDay,
-      required int position,
+      Value<EpochDay?> dueDay,
+      required String rank,
       required DateTime createdAt,
       required DateTime updatedAt,
     });
@@ -1927,8 +1927,8 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<String> title,
       Value<String?> notes,
       Value<bool> isDone,
-      Value<int?> dueDay,
-      Value<int> position,
+      Value<EpochDay?> dueDay,
+      Value<String> rank,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -2002,13 +2002,14 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get dueDay => $composableBuilder(
-    column: $table.dueDay,
-    builder: (column) => ColumnFilters(column),
-  );
+  ColumnWithTypeConverterFilters<EpochDay?, EpochDay, int> get dueDay =>
+      $composableBuilder(
+        column: $table.dueDay,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
-  ColumnFilters<int> get position => $composableBuilder(
-    column: $table.position,
+  ColumnFilters<String> get rank => $composableBuilder(
+    column: $table.rank,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2105,8 +2106,8 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get position => $composableBuilder(
-    column: $table.position,
+  ColumnOrderings<String> get rank => $composableBuilder(
+    column: $table.rank,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2165,11 +2166,11 @@ class $$TasksTableAnnotationComposer
   GeneratedColumn<bool> get isDone =>
       $composableBuilder(column: $table.isDone, builder: (column) => column);
 
-  GeneratedColumn<int> get dueDay =>
+  GeneratedColumnWithTypeConverter<EpochDay?, int> get dueDay =>
       $composableBuilder(column: $table.dueDay, builder: (column) => column);
 
-  GeneratedColumn<int> get position =>
-      $composableBuilder(column: $table.position, builder: (column) => column);
+  GeneratedColumn<String> get rank =>
+      $composableBuilder(column: $table.rank, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -2259,8 +2260,8 @@ class $$TasksTableTableManager
                 Value<String> title = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<bool> isDone = const Value.absent(),
-                Value<int?> dueDay = const Value.absent(),
-                Value<int> position = const Value.absent(),
+                Value<EpochDay?> dueDay = const Value.absent(),
+                Value<String> rank = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => TasksCompanion(
@@ -2270,7 +2271,7 @@ class $$TasksTableTableManager
                 notes: notes,
                 isDone: isDone,
                 dueDay: dueDay,
-                position: position,
+                rank: rank,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -2281,8 +2282,8 @@ class $$TasksTableTableManager
                 required String title,
                 Value<String?> notes = const Value.absent(),
                 Value<bool> isDone = const Value.absent(),
-                Value<int?> dueDay = const Value.absent(),
-                required int position,
+                Value<EpochDay?> dueDay = const Value.absent(),
+                required String rank,
                 required DateTime createdAt,
                 required DateTime updatedAt,
               }) => TasksCompanion.insert(
@@ -2292,7 +2293,7 @@ class $$TasksTableTableManager
                 notes: notes,
                 isDone: isDone,
                 dueDay: dueDay,
-                position: position,
+                rank: rank,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -2379,7 +2380,7 @@ typedef $$SubtasksTableCreateCompanionBuilder =
       required int taskId,
       required String title,
       Value<bool> isDone,
-      required int position,
+      required String rank,
       required DateTime createdAt,
       required DateTime updatedAt,
     });
@@ -2389,7 +2390,7 @@ typedef $$SubtasksTableUpdateCompanionBuilder =
       Value<int> taskId,
       Value<String> title,
       Value<bool> isDone,
-      Value<int> position,
+      Value<String> rank,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -2440,8 +2441,8 @@ class $$SubtasksTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get position => $composableBuilder(
-    column: $table.position,
+  ColumnFilters<String> get rank => $composableBuilder(
+    column: $table.rank,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2503,8 +2504,8 @@ class $$SubtasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get position => $composableBuilder(
-    column: $table.position,
+  ColumnOrderings<String> get rank => $composableBuilder(
+    column: $table.rank,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2560,8 +2561,8 @@ class $$SubtasksTableAnnotationComposer
   GeneratedColumn<bool> get isDone =>
       $composableBuilder(column: $table.isDone, builder: (column) => column);
 
-  GeneratedColumn<int> get position =>
-      $composableBuilder(column: $table.position, builder: (column) => column);
+  GeneratedColumn<String> get rank =>
+      $composableBuilder(column: $table.rank, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -2625,7 +2626,7 @@ class $$SubtasksTableTableManager
                 Value<int> taskId = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<bool> isDone = const Value.absent(),
-                Value<int> position = const Value.absent(),
+                Value<String> rank = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => SubtasksCompanion(
@@ -2633,7 +2634,7 @@ class $$SubtasksTableTableManager
                 taskId: taskId,
                 title: title,
                 isDone: isDone,
-                position: position,
+                rank: rank,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -2643,7 +2644,7 @@ class $$SubtasksTableTableManager
                 required int taskId,
                 required String title,
                 Value<bool> isDone = const Value.absent(),
-                required int position,
+                required String rank,
                 required DateTime createdAt,
                 required DateTime updatedAt,
               }) => SubtasksCompanion.insert(
@@ -2651,7 +2652,7 @@ class $$SubtasksTableTableManager
                 taskId: taskId,
                 title: title,
                 isDone: isDone,
-                position: position,
+                rank: rank,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

@@ -16,7 +16,7 @@ class TaskDao extends DatabaseAccessor<AppDatabase>
   /// Binds the DAO to its attached database.
   TaskDao(super.attachedDatabase);
 
-  /// A checklist's tasks ordered by `position` (id as a stable tiebreaker),
+  /// A checklist's tasks ordered by `rank` (id as a stable tiebreaker),
   /// each with subtask `(done, total)` counts.
   Stream<List<TaskView>> watchForChecklist(int checklistId) {
     final query = select(tasks).join([
@@ -32,7 +32,7 @@ class TaskDao extends DatabaseAccessor<AppDatabase>
       ..where(tasks.checklistId.equals(checklistId))
       ..groupBy([tasks.id])
       ..orderBy([
-        OrderingTerm(expression: tasks.position),
+        OrderingTerm(expression: tasks.rank),
         OrderingTerm(expression: tasks.id),
       ]);
 
@@ -98,7 +98,7 @@ class TaskDao extends DatabaseAccessor<AppDatabase>
           subtaskProgress: readProgress(row),
         );
         // dueDay is non-null here (guarded by the WHERE above).
-        if (task.dueDay! < today.value) {
+        if (task.dueDay! < today) {
           overdue.add(entry);
         } else {
           dueToday.add(entry);
@@ -108,9 +108,9 @@ class TaskDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
-  /// Adds a task to the checklist at the next free position.
+  /// Adds a task to the checklist at the tail of its order.
   ///
-  /// Allocating the position and inserting run in one transaction, so they are
+  /// Allocating the rank and inserting run in one transaction, so they are
   /// atomic.
   Future<int> add(int checklistId, String title) {
     return transaction(() async {
@@ -119,9 +119,9 @@ class TaskDao extends DatabaseAccessor<AppDatabase>
         TasksCompanion.insert(
           checklistId: checklistId,
           title: title,
-          position: await nextPosition(
+          rank: await nextRank(
             tasks,
-            tasks.position.max(),
+            tasks.rank,
             where: tasks.checklistId.equals(checklistId),
           ),
           createdAt: now,
@@ -145,7 +145,7 @@ class TaskDao extends DatabaseAccessor<AppDatabase>
     TasksCompanion(
       title: Value(title),
       notes: Value(notes),
-      dueDay: Value(dueDay?.value),
+      dueDay: Value(dueDay),
       updatedAt: Value(DateTime.timestamp()),
     ),
   );
@@ -163,7 +163,7 @@ class TaskDao extends DatabaseAccessor<AppDatabase>
   Future<int> setDueDate(int id, EpochDay? dueDay) =>
       (update(tasks)..where((t) => t.id.equals(id))).write(
         TasksCompanion(
-          dueDay: Value(dueDay?.value),
+          dueDay: Value(dueDay),
           updatedAt: Value(DateTime.timestamp()),
         ),
       );
@@ -172,16 +172,17 @@ class TaskDao extends DatabaseAccessor<AppDatabase>
   Future<int> deleteById(int id) =>
       (delete(tasks)..where((t) => t.id.equals(id))).go();
 
-  /// Rewrites positions within a checklist to match the given id order.
-  ///
-  /// [orderedIds] must be the full set of task ids in [checklistId].
-  Future<void> reorder(int checklistId, List<int> orderedIds) =>
-      reorderByPosition(
+  /// Re-ranks the moved task between its new neighbours (null = list end).
+  Future<void> reorder(int movedId, int? beforeId, int? afterId) =>
+      reorderByRank(
         tasks,
-        orderedIds: orderedIds,
+        movedId: movedId,
+        beforeId: beforeId,
+        afterId: afterId,
         idColumn: tasks.id,
-        rowFor: (index, now) =>
-            TasksCompanion(position: Value(index), updatedAt: Value(now)),
-        scope: tasks.checklistId.equals(checklistId),
+        rankColumn: tasks.rank,
+        rowFor: (rank, now) =>
+            TasksCompanion(rank: Value(rank), updatedAt: Value(now)),
+        scopeOf: (moved) => tasks.checklistId.equals(moved.checklistId),
       );
 }

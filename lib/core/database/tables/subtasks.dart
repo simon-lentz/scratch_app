@@ -7,7 +7,7 @@ import 'package:drift/drift.dart';
 /// DateTime values are stored as ISO-8601 text.
 ///
 /// Deleting the parent task cascades to its subtasks.
-@TableIndex(name: 'subtask_task_order', columns: {#taskId, #position})
+@TableIndex(name: 'subtask_task_order', columns: {#taskId, #rank})
 class Subtasks extends Table {
   /// Surrogate PK.
   IntColumn get id => integer().autoIncrement()();
@@ -22,8 +22,8 @@ class Subtasks extends Table {
   /// Subtask completion flag, defaults to false.
   BoolColumn get isDone => boolean().withDefault(const Constant(false))();
 
-  /// Sort order within the owning task.
-  IntColumn get position => integer()();
+  /// Fractional sort key within the owning task (see core/database/rank.dart).
+  TextColumn get rank => text()();
 
   /// Creation timestamp.
   DateTimeColumn get createdAt => dateTime()();

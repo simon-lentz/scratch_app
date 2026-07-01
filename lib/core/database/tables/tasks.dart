@@ -1,3 +1,4 @@
+import 'package:checkplan/core/database/converters/epoch_day_converter.dart';
 import 'package:checkplan/core/database/tables/checklists.dart';
 import 'package:drift/drift.dart';
 
@@ -9,7 +10,7 @@ import 'package:drift/drift.dart';
 ///
 /// While an item has subtasks, [isDone] is reconciled to them — done iff every
 /// subtask is done; with no subtasks, completion is set manually.
-@TableIndex(name: 'task_checklist_order', columns: {#checklistId, #position})
+@TableIndex(name: 'task_checklist_order', columns: {#checklistId, #rank})
 @TableIndex(name: 'task_due', columns: {#dueDay})
 class Tasks extends Table {
   /// Surrogate PK.
@@ -28,11 +29,11 @@ class Tasks extends Table {
   /// Task completion flag, defaults to false.
   BoolColumn get isDone => boolean().withDefault(const Constant(false))();
 
-  /// Optional due date.
-  IntColumn get dueDay => integer().nullable()();
+  /// Optional due date, stored as an epoch-day int and mapped to `EpochDay`.
+  IntColumn get dueDay => integer().nullable().map(const EpochDayConverter())();
 
-  /// Position of the task within its checklist.
-  IntColumn get position => integer()();
+  /// Fractional sort key within the checklist (see core/database/rank.dart).
+  TextColumn get rank => text()();
 
   /// Creation timestamp.
   DateTimeColumn get createdAt => dateTime()();

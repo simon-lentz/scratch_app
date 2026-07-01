@@ -59,9 +59,9 @@
             "dsl_features": []
           },
           {
-            "name": "position",
-            "getter_name": "position",
-            "moor_type": "int",
+            "name": "rank",
+            "getter_name": "rank",
+            "moor_type": "string",
             "nullable": false,
             "customConstraints": null,
             "default_dart": null,
@@ -205,12 +205,16 @@
             "customConstraints": null,
             "default_dart": null,
             "default_client_dart": null,
-            "dsl_features": []
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const EpochDayConverter()",
+              "dart_type_name": "EpochDay"
+            }
           },
           {
-            "name": "position",
-            "getter_name": "position",
-            "moor_type": "int",
+            "name": "rank",
+            "getter_name": "rank",
+            "moor_type": "string",
             "nullable": false,
             "customConstraints": null,
             "default_dart": null,
@@ -327,9 +331,9 @@
             "dsl_features": []
           },
           {
-            "name": "position",
-            "getter_name": "position",
-            "moor_type": "int",
+            "name": "rank",
+            "getter_name": "rank",
+            "moor_type": "string",
             "nullable": false,
             "customConstraints": null,
             "default_dart": null,
@@ -379,7 +383,7 @@
             "order_by": null
           },
           {
-            "column": "position",
+            "column": "rank",
             "order_by": null
           }
         ]
@@ -402,7 +406,7 @@
             "order_by": null
           },
           {
-            "column": "position",
+            "column": "rank",
             "order_by": null
           }
         ]
@@ -444,7 +448,7 @@
             "order_by": null
           },
           {
-            "column": "position",
+            "column": "rank",
             "order_by": null
           }
         ]
@@ -457,7 +461,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"checklists\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"title\" TEXT NOT NULL, \"color_value\" INTEGER NULL, \"position\" INTEGER NOT NULL, \"created_at\" TEXT NOT NULL, \"updated_at\" TEXT NOT NULL, \"archived_at\" TEXT NULL);"
+          "sql": "CREATE TABLE IF NOT EXISTS \"checklists\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"title\" TEXT NOT NULL, \"color_value\" INTEGER NULL, \"rank\" TEXT NOT NULL, \"created_at\" TEXT NOT NULL, \"updated_at\" TEXT NOT NULL, \"archived_at\" TEXT NULL);"
         }
       ]
     },
@@ -466,7 +470,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"tasks\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"checklist_id\" INTEGER NOT NULL REFERENCES checklists (id) ON DELETE CASCADE, \"title\" TEXT NOT NULL, \"notes\" TEXT NULL, \"is_done\" INTEGER NOT NULL DEFAULT 0 CHECK (\"is_done\" IN (0, 1)), \"due_day\" INTEGER NULL, \"position\" INTEGER NOT NULL, \"created_at\" TEXT NOT NULL, \"updated_at\" TEXT NOT NULL);"
+          "sql": "CREATE TABLE IF NOT EXISTS \"tasks\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"checklist_id\" INTEGER NOT NULL REFERENCES checklists (id) ON DELETE CASCADE, \"title\" TEXT NOT NULL, \"notes\" TEXT NULL, \"is_done\" INTEGER NOT NULL DEFAULT 0 CHECK (\"is_done\" IN (0, 1)), \"due_day\" INTEGER NULL, \"rank\" TEXT NOT NULL, \"created_at\" TEXT NOT NULL, \"updated_at\" TEXT NOT NULL);"
         }
       ]
     },
@@ -475,7 +479,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"subtasks\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"task_id\" INTEGER NOT NULL REFERENCES tasks (id) ON DELETE CASCADE, \"title\" TEXT NOT NULL, \"is_done\" INTEGER NOT NULL DEFAULT 0 CHECK (\"is_done\" IN (0, 1)), \"position\" INTEGER NOT NULL, \"created_at\" TEXT NOT NULL, \"updated_at\" TEXT NOT NULL);"
+          "sql": "CREATE TABLE IF NOT EXISTS \"subtasks\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"task_id\" INTEGER NOT NULL REFERENCES tasks (id) ON DELETE CASCADE, \"title\" TEXT NOT NULL, \"is_done\" INTEGER NOT NULL DEFAULT 0 CHECK (\"is_done\" IN (0, 1)), \"rank\" TEXT NOT NULL, \"created_at\" TEXT NOT NULL, \"updated_at\" TEXT NOT NULL);"
         }
       ]
     },
@@ -484,7 +488,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE INDEX checklist_active_order ON checklists (archived_at, position)"
+          "sql": "CREATE INDEX checklist_active_order ON checklists (archived_at, rank)"
         }
       ]
     },
@@ -493,7 +497,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE INDEX task_checklist_order ON tasks (checklist_id, position)"
+          "sql": "CREATE INDEX task_checklist_order ON tasks (checklist_id, rank)"
         }
       ]
     },
@@ -511,7 +515,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE INDEX subtask_task_order ON subtasks (task_id, position)"
+          "sql": "CREATE INDEX subtask_task_order ON subtasks (task_id, rank)"
         }
       ]
     }

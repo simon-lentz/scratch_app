@@ -15,7 +15,7 @@ void main() {
         .insert(
           ChecklistsCompanion.insert(
             title: 'Groceries',
-            position: 0,
+            rank: 'a0',
             createdAt: now,
             updatedAt: now,
           ),

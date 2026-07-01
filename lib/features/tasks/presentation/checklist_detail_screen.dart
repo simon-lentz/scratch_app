@@ -52,7 +52,7 @@ class ChecklistDetailScreen extends ConsumerWidget {
           message: 'No tasks yet',
           icon: Icons.task_alt,
         ),
-        data: (tasks) => _TaskList(tasks: tasks, checklistId: checklistId),
+        data: (tasks) => _TaskList(tasks: tasks),
       ),
       floatingActionButton: switch (tasksAsync) {
         AsyncData() => FloatingActionButton(
@@ -86,10 +86,9 @@ Future<void> _addTask(
 
 /// The non-empty list of task views.
 class _TaskList extends ConsumerStatefulWidget {
-  const _TaskList({required this.tasks, required this.checklistId});
+  const _TaskList({required this.tasks});
 
   final List<TaskView> tasks;
-  final int checklistId;
 
   @override
   ConsumerState<_TaskList> createState() => _TaskListState();
@@ -140,9 +139,9 @@ class _TaskListState extends ConsumerState<_TaskList>
         oldIndex: oldIndex,
         newIndex: newIndex,
         order: _order,
-        persist: (ids) => ref
+        persist: (movedId, beforeId, afterId) => ref
             .read(taskControllerProvider.notifier)
-            .reorder(widget.checklistId, ids),
+            .reorder(movedId, beforeId, afterId),
         errorMessage: 'Could not reorder the tasks',
       );
 
@@ -431,9 +430,9 @@ class _SubtaskSectionState extends ConsumerState<_SubtaskSection>
         oldIndex: oldIndex,
         newIndex: newIndex,
         order: _subOrder,
-        persist: (ids) => ref
+        persist: (movedId, beforeId, afterId) => ref
             .read(subtaskControllerProvider.notifier)
-            .reorder(widget.taskId, ids),
+            .reorder(movedId, beforeId, afterId),
         errorMessage: 'Could not reorder the subtasks',
       );
 

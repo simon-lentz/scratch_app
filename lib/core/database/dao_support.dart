@@ -1,88 +1,162 @@
 import 'package:checkplan/core/database/app_database.dart';
+import 'package:checkplan/core/database/rank.dart';
 import 'package:checkplan/core/database/summaries.dart';
 import 'package:drift/drift.dart';
 
-/// Thrown by [PositioningDao.reorderByPosition] when the requested id set does
-/// not match the scope's current ids — a partial, duplicated, or stale set.
-///
-/// An [Exception], not an [Error]: the realistic cause is a benign race, where
-/// a caller dispatches the complete rendered order but a concurrent write
-/// changed the scope first. `Result.guard` maps it to an `Err` so the command
-/// degrades gracefully; a genuine logic bug in a reorder still surfaces as an
-/// uncaught [Error].
-class ReorderConflict implements Exception {
-  /// Creates a reorder conflict carrying a human-readable [message].
-  const ReorderConflict(this.message);
-
-  /// The human-readable reason the requested order was rejected.
-  final String message;
-}
-
-/// Shared helpers for DAOs whose rows are ordered by a dense integer `position`
-/// within a scope (checklists among the active set; tasks within a checklist;
-/// subtasks within a task).
+/// Shared helpers for DAOs whose rows are ordered by a fractional `rank` string
+/// within a scope (checklists globally; tasks within a checklist; subtasks
+/// within a task). See core/database/rank.dart for the key algorithm.
 mixin PositioningDao on DatabaseAccessor<AppDatabase> {
-  /// The next free `position` for [table] — one past the current maximum, or 0
-  /// when the scope is empty.
+  /// The append rank for [table]: just after the current maximum rank in the
+  /// scope, or the first key when the scope is empty.
   ///
-  /// Pass [maxPosition] as the table's `position.max()` aggregate, and an
-  /// optional [where] to scope the maximum to a parent (e.g. one checklist).
-  Future<int> nextPosition<T extends HasResultSet, R>(
+  /// Pass [rankColumn] as the table's `rank` column and an optional [where] to
+  /// scope the maximum to a parent (e.g. one checklist).
+  Future<String> nextRank<T extends HasResultSet, R>(
     ResultSetImplementation<T, R> table,
-    Expression<int> maxPosition, {
+    GeneratedColumn<String> rankColumn, {
     Expression<bool>? where,
   }) async {
-    final query = selectOnly(table)..addColumns([maxPosition]);
+    final maxRank = rankColumn.max();
+    final query = selectOnly(table)..addColumns([maxRank]);
     if (where != null) query.where(where);
     final row = await query.getSingleOrNull();
-    return (row?.read(maxPosition) ?? -1) + 1;
+    return rankBetween(row?.read(maxRank), null);
   }
 
-  /// Rewrites `position` for [table] so the rows named by [orderedIds] take
-  /// dense positions `0..n-1` in that order, in one atomic [batch].
+  /// Re-ranks the row [movedId] to sit strictly between its new neighbours
+  /// [beforeId] (the row now above it) and [afterId] (the row now below it);
+  /// either is null at a list end.
   ///
-  /// [orderedIds] must be the complete, duplicate-free id set for the scope: an
-  /// omitted id would keep its stale `position` and collide with a freshly
-  /// assigned one. The contract is enforced before the rewrite (it reads the
-  /// scope's current ids and throws a [ReorderConflict] on a partial,
-  /// duplicated, or stale list), so a malformed reorder is rejected instead of
-  /// silently scrambling order. Throwing before the [batch] keeps the rewrite
-  /// atomic: nothing is written on a violation.
+  /// The common case is a single-row write: the neighbours keep their ranks and
+  /// [movedId] takes a fresh key strictly between them, so a reorder is one
+  /// `UPDATE`, not a block rewrite. When the target gap is degenerate — the
+  /// neighbours share a rank or sit out of order, which a single device never
+  /// produces but a sync merge of two devices can — there is no key strictly
+  /// between them, so [scopeOf]'s rows are rebalanced instead: rewritten with
+  /// fresh, strictly increasing keys in the intended order, which also clears
+  /// the duplicate ranks that caused it. The read-decide-write runs in one
+  /// transaction so a concurrent ordering write cannot interleave on a stale
+  /// neighbour rank.
   ///
-  /// [idColumn] is the table's primary-key column; [rowFor] builds the per-row
-  /// companion (`position`/`updatedAt`); [scope] narrows the update and the
-  /// contract check to the orderable subset (e.g. one checklist, or only the
-  /// non-archived checklists).
-  Future<void> reorderByPosition<T extends Table, D>(
+  /// [idColumn]/[rankColumn] are the table's primary-key and rank columns;
+  /// [rowFor] builds the per-row companion (`rank`/`updatedAt`); [scopeOf] maps
+  /// the moved row to the predicate selecting its ordering scope (its siblings)
+  /// — e.g. the active checklists, or the tasks of one checklist.
+  Future<void> reorderByRank<T extends Table, D>(
     TableInfo<T, D> table, {
-    required List<int> orderedIds,
+    required int movedId,
+    required int? beforeId,
+    required int? afterId,
     required GeneratedColumn<int> idColumn,
-    required Insertable<D> Function(int index, DateTime now) rowFor,
-    Expression<bool>? scope,
-  }) async {
-    final idQuery = selectOnly(table)..addColumns([idColumn]);
-    if (scope != null) idQuery.where(scope);
-    final currentIds = (await idQuery.get())
-        .map((row) => row.read(idColumn)!)
-        .toSet();
-    final requestedIds = orderedIds.toSet();
-    if (requestedIds.length != orderedIds.length ||
-        requestedIds.length != currentIds.length ||
-        !requestedIds.containsAll(currentIds)) {
-      throw ReorderConflict(
-        'reorder expects the complete, duplicate-free id set for the scope; '
-        'got $orderedIds for current ids $currentIds',
+    required GeneratedColumn<String> rankColumn,
+    required Insertable<D> Function(String rank, DateTime now) rowFor,
+    required Expression<bool> Function(D moved) scopeOf,
+  }) {
+    return transaction(() async {
+      final (:before, :after) = await _neighbourRanks(
+        table,
+        idColumn: idColumn,
+        rankColumn: rankColumn,
+        beforeId: beforeId,
+        afterId: afterId,
       );
-    }
+      // A null neighbour is a list end, which rankBetween handles; only two
+      // present ranks that tie or invert have no key between them.
+      if (before != null && after != null && before.compareTo(after) >= 0) {
+        await _rebalanceScope(
+          table,
+          movedId: movedId,
+          beforeId: beforeId,
+          afterId: afterId,
+          idColumn: idColumn,
+          rankColumn: rankColumn,
+          rowFor: rowFor,
+          scopeOf: scopeOf,
+        );
+        return;
+      }
+      await (update(table)..where((_) => idColumn.equals(movedId))).write(
+        rowFor(rankBetween(before, after), DateTime.timestamp()),
+      );
+    });
+  }
 
+  /// Reads the ranks of [beforeId] and [afterId] in a single query. A null id
+  /// (a list end) reads back as a null rank, as does a neighbour deleted out
+  /// from under the reorder.
+  Future<({String? before, String? after})> _neighbourRanks<T extends Table, D>(
+    TableInfo<T, D> table, {
+    required GeneratedColumn<int> idColumn,
+    required GeneratedColumn<String> rankColumn,
+    required int? beforeId,
+    required int? afterId,
+  }) async {
+    final ids = [?beforeId, ?afterId];
+    if (ids.isEmpty) return (before: null, after: null);
+    final rows =
+        await (selectOnly(table)
+              ..addColumns([idColumn, rankColumn])
+              ..where(idColumn.isIn(ids)))
+            .get();
+    final rankById = {
+      for (final row in rows) row.read(idColumn)!: row.read(rankColumn),
+    };
+    return (before: rankById[beforeId], after: rankById[afterId]);
+  }
+
+  /// Rewrites every row in the moved row's scope with fresh, strictly
+  /// increasing ranks in the intended order: the scope is read in its current
+  /// `(rank, id)` order, [movedId] is pulled out and reinserted between its
+  /// requested neighbours (falling back toward a list end if a neighbour was
+  /// concurrently removed), then the whole scope is re-keyed with
+  /// [ranksBetween]. Used when no key fits between the target's neighbours.
+  Future<void> _rebalanceScope<T extends Table, D>(
+    TableInfo<T, D> table, {
+    required int movedId,
+    required int? beforeId,
+    required int? afterId,
+    required GeneratedColumn<int> idColumn,
+    required GeneratedColumn<String> rankColumn,
+    required Insertable<D> Function(String rank, DateTime now) rowFor,
+    required Expression<bool> Function(D moved) scopeOf,
+  }) async {
+    final moved = await (select(
+      table,
+    )..where((_) => idColumn.equals(movedId))).getSingleOrNull();
+    // The moved row vanished (a concurrent delete): nothing to reorder.
+    if (moved == null) return;
+
+    final ordered =
+        await (selectOnly(table)
+              ..addColumns([idColumn])
+              ..where(scopeOf(moved))
+              ..orderBy([
+                OrderingTerm(expression: rankColumn),
+                OrderingTerm(expression: idColumn),
+              ]))
+            .get();
+    final ids = [for (final row in ordered) row.read(idColumn)!]
+      ..remove(movedId);
+
+    final beforeIndex = beforeId == null ? -1 : ids.indexOf(beforeId);
+    final int insertAt;
+    if (beforeIndex >= 0) {
+      insertAt = beforeIndex + 1;
+    } else {
+      final afterIndex = afterId == null ? -1 : ids.indexOf(afterId);
+      insertAt = afterIndex >= 0 ? afterIndex : ids.length;
+    }
+    ids.insert(insertAt, movedId);
+
+    final ranks = ranksBetween(null, null, ids.length);
     final now = DateTime.timestamp();
     await batch((b) {
-      for (final (index, id) in orderedIds.indexed) {
-        final matchesRow = idColumn.equals(id);
+      for (final (index, id) in ids.indexed) {
         b.update(
           table,
-          rowFor(index, now),
-          where: (_) => scope == null ? matchesRow : scope & matchesRow,
+          rowFor(ranks[index], now),
+          where: (_) => idColumn.equals(id),
         );
       }
     });

@@ -14,14 +14,14 @@ class ChecklistDao extends DatabaseAccessor<AppDatabase>
   /// Binds the DAO to its attached database.
   ChecklistDao(super.attachedDatabase);
 
-  /// Non-archived checklists ordered by `position` (id as a stable tiebreaker),
+  /// Non-archived checklists ordered by `rank` (id as a stable tiebreaker),
   /// each with its task `(done, total)` counts.
   ///
   /// Re-emits whenever checklists or tasks change.
   Stream<List<ChecklistSummary>> watchActiveSummaries() => _watchSummaries(
     where: checklists.archivedAt.isNull(),
     orderBy: [
-      OrderingTerm(expression: checklists.position),
+      OrderingTerm(expression: checklists.rank),
       OrderingTerm(expression: checklists.id),
     ],
   );
@@ -31,7 +31,7 @@ class ChecklistDao extends DatabaseAccessor<AppDatabase>
   ///
   /// The mirror of [watchActiveSummaries] for the archive view: same shape, but
   /// it selects the archived rows (`archivedAt` set) and orders by when they
-  /// were archived rather than by `position`.
+  /// were archived rather than by `rank`.
   Stream<List<ChecklistSummary>> watchArchivedSummaries() => _watchSummaries(
     where: checklists.archivedAt.isNotNull(),
     orderBy: [
@@ -84,17 +84,17 @@ class ChecklistDao extends DatabaseAccessor<AppDatabase>
   Stream<Checklist?> watchRowById(int id) =>
       (select(checklists)..where((c) => c.id.equals(id))).watchSingleOrNull();
 
-  /// Creates a checklist with the given title at the next free position.
+  /// Creates a checklist with the given title at the tail of the order.
   ///
-  /// Allocating the position and inserting run in one transaction, so the
-  /// `MAX(position)+1` read and the insert are atomic.
+  /// Allocating the rank and inserting run in one transaction, so the max-rank
+  /// read and the insert are atomic.
   Future<int> create(String title) {
     return transaction(() async {
       final now = DateTime.timestamp();
       return into(checklists).insert(
         ChecklistsCompanion.insert(
           title: title,
-          position: await nextPosition(checklists, checklists.position.max()),
+          rank: await nextRank(checklists, checklists.rank),
           createdAt: now,
           updatedAt: now,
         ),
@@ -133,19 +133,17 @@ class ChecklistDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Restores a previously archived checklist, re-appending it to the tail of
-  /// the active order so its stale `position` cannot collide with one taken by
-  /// an intervening reorder.
+  /// the active order so its stale `rank` cannot sort it ahead of a checklist
+  /// added or moved while it was archived.
   ///
-  /// Reading the next position and writing run in one transaction, matching the
+  /// Reading the next rank and writing run in one transaction, matching the
   /// atomicity of [create].
   Future<int> restore(int id) {
     return transaction(() async {
       return (update(checklists)..where((c) => c.id.equals(id))).write(
         ChecklistsCompanion(
           archivedAt: const Value(null),
-          position: Value(
-            await nextPosition(checklists, checklists.position.max()),
-          ),
+          rank: Value(await nextRank(checklists, checklists.rank)),
           updatedAt: Value(DateTime.timestamp()),
         ),
       );
@@ -156,15 +154,19 @@ class ChecklistDao extends DatabaseAccessor<AppDatabase>
   Future<int> deleteById(int id) =>
       (delete(checklists)..where((c) => c.id.equals(id))).go();
 
-  /// Rewrites positions so they match the given id order, atomically.
-  ///
-  /// [orderedIds] must be the full set of non-archived checklist ids.
-  Future<void> reorder(List<int> orderedIds) => reorderByPosition(
-    checklists,
-    orderedIds: orderedIds,
-    idColumn: checklists.id,
-    rowFor: (index, now) =>
-        ChecklistsCompanion(position: Value(index), updatedAt: Value(now)),
-    scope: checklists.archivedAt.isNull(),
-  );
+  /// Re-ranks the moved checklist between its new neighbours (null = list end).
+  Future<void> reorder(int movedId, int? beforeId, int? afterId) =>
+      reorderByRank(
+        checklists,
+        movedId: movedId,
+        beforeId: beforeId,
+        afterId: afterId,
+        idColumn: checklists.id,
+        rankColumn: checklists.rank,
+        rowFor: (rank, now) =>
+            ChecklistsCompanion(rank: Value(rank), updatedAt: Value(now)),
+        // The rank-ordered scope is the active set; archived rows order by
+        // archivedAt and aren't reordered, so a rebalance leaves them be.
+        scopeOf: (_) => checklists.archivedAt.isNull(),
+      );
 }

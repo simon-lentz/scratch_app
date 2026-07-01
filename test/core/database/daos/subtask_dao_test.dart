@@ -1,8 +1,8 @@
 import 'package:checkplan/core/database/app_database.dart';
-import 'package:checkplan/core/database/dao_support.dart';
 import 'package:checkplan/core/database/daos/checklist_dao.dart';
 import 'package:checkplan/core/database/daos/subtask_dao.dart';
 import 'package:checkplan/core/database/daos/task_dao.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -144,12 +144,13 @@ void main() {
     expect(titles, ['keep']);
   });
 
-  test('reorder rewrites subtask positions within the task', () async {
+  test('reorder moves a subtask to the head, before its old first', () async {
     final task = await seedTask();
     final a = await subtasks.add(task, 'a');
-    final b = await subtasks.add(task, 'b');
+    await subtasks.add(task, 'b');
     final c = await subtasks.add(task, 'c');
-    await subtasks.reorder(task, [c, a, b]);
+    // Move c to the front: nothing above it, a below it.
+    await subtasks.reorder(c, null, a);
 
     final titles = (await subtasks.watchForTask(task).first)
         .map((subtask) => subtask.title)
@@ -157,15 +158,38 @@ void main() {
     expect(titles, ['c', 'a', 'b']);
   });
 
-  test('reorder rejects a partial id set', () async {
-    final task = await seedTask();
-    final a = await subtasks.add(task, 'a');
-    await subtasks.add(task, 'b');
-    await subtasks.add(task, 'c');
-    // Omitting b and c would leave them colliding on stale positions.
-    await expectLater(
-      subtasks.reorder(task, [a]),
-      throwsA(isA<ReorderConflict>()),
-    );
-  });
+  test(
+    'reorder rebalances colliding ranks within the task scope only',
+    () async {
+      Future<List<String>> ranksOf(int taskId) async =>
+          (await subtasks.watchForTask(taskId).first)
+              .map((subtask) => subtask.rank)
+              .toList();
+
+      final taskA = await seedTask();
+      final list = (await readTask(taskA)).checklistId;
+      final taskB = await tasks.add(list, 'Other task');
+      final a1 = await subtasks.add(taskA, 'a1');
+      final a2 = await subtasks.add(taskA, 'a2');
+      final a3 = await subtasks.add(taskA, 'a3');
+      await subtasks.add(taskB, 'b1');
+      await subtasks.add(taskB, 'b2');
+      final ranksBeforeB = await ranksOf(taskB);
+
+      // Collide a2 and a3 onto one rank, then drop a1 between them: the
+      // rebalance must re-key taskA's subtasks only, leaving taskB's untouched.
+      await (db.update(db.subtasks)..where((s) => s.id.equals(a2))).write(
+        const SubtasksCompanion(rank: Value('a1')),
+      );
+      await (db.update(db.subtasks)..where((s) => s.id.equals(a3))).write(
+        const SubtasksCompanion(rank: Value('a1')),
+      );
+      await subtasks.reorder(a1, a2, a3);
+
+      final rowsA = await subtasks.watchForTask(taskA).first;
+      expect(rowsA.map((subtask) => subtask.title), ['a2', 'a1', 'a3']);
+      expect(rowsA.map((subtask) => subtask.rank).toSet(), hasLength(3));
+      expect(await ranksOf(taskB), ranksBeforeB);
+    },
+  );
 }

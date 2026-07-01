@@ -28,7 +28,11 @@ class _FailingController extends ChecklistController {
   @override
   Future<Result<void>> restore(int id) async => _boom();
   @override
-  Future<Result<void>> reorder(List<int> orderedIds) async => _boom();
+  Future<Result<void>> reorder(
+    int movedId,
+    int? beforeId,
+    int? afterId,
+  ) async => _boom();
   @override
   Future<Result<void>> delete(int id) async => _boom();
 }

@@ -123,8 +123,9 @@ class _ChecklistListState extends ConsumerState<_ChecklistList>
     oldIndex: oldIndex,
     newIndex: newIndex,
     order: _order,
-    persist: (ids) =>
-        ref.read(checklistControllerProvider.notifier).reorder(ids),
+    persist: (movedId, beforeId, afterId) => ref
+        .read(checklistControllerProvider.notifier)
+        .reorder(movedId, beforeId, afterId),
     errorMessage: 'Could not reorder the checklists',
   );
 

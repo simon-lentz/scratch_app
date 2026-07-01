@@ -10,17 +10,17 @@ void main() {
   });
 
   test('a past day is Overdue by the day count', () {
-    final status = dueStatusFor(today.value - 3, today);
+    final status = dueStatusFor(EpochDay(today.value - 3), today);
     expect(status, isA<Overdue>());
     expect((status as Overdue).days, 3);
   });
 
   test('today is DueToday', () {
-    expect(dueStatusFor(today.value, today), isA<DueToday>());
+    expect(dueStatusFor(today, today), isA<DueToday>());
   });
 
   test('a future day is Upcoming on that day', () {
-    final status = dueStatusFor(today.value + 2, today);
+    final status = dueStatusFor(EpochDay(today.value + 2), today);
     expect(status, isA<Upcoming>());
     expect((status as Upcoming).on, EpochDay(today.value + 2));
   });

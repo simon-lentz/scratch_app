@@ -29,6 +29,6 @@ void main() {
     await tester.pumpAndSettle();
 
     final task = await db.readSingleTask();
-    expect(task.dueDay, today.value);
+    expect(task.dueDay, today);
   });
 }

@@ -60,11 +60,12 @@ void main() {
     expect(await controller().rename(id, '   '), isA<Err<void>>());
   });
 
-  test('reorder rewrites positions', () async {
+  test('reorder changes the order', () async {
     final task = await seedTask();
     final a = ((await controller().add(task, 'a')) as Ok<int>).value;
     final b = ((await controller().add(task, 'b')) as Ok<int>).value;
-    expect(await controller().reorder(task, [b, a]), isA<Ok<void>>());
+    // Move b before a: nothing above it, a below it.
+    expect(await controller().reorder(b, null, a), isA<Ok<void>>());
     final dao = container.read(subtaskDaoProvider);
     final titles = (await dao.watchForTask(task).first)
         .map((s) => s.title)
